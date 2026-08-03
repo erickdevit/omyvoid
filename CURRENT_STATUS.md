@@ -86,7 +86,8 @@ providers usados pelo Omyvoid: `desktopapplications`, `websearch`,
 `providerlist`, `files`, `symbols`, `calc`, `clipboard` e `menus`. O builder e a
 CI exigem os quatro pacotes do repositório.
 
-Ainda faltam `xlint` e uma construção real com `xbps-src` em Void
+O `xlint` foi executado e todas as regras funcionais dos quatro templates foram
+aprovadas. Ainda falta uma construção real com `xbps-src` em Void
 `x86_64-glibc`. O host Windows atual não fornece as ferramentas XBPS/Go do
 ambiente de destino, portanto a validade binária dos plugins Go só poderá ser
 confirmada no runner Void.
