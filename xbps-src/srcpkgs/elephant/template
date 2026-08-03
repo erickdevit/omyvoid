@@ -25,7 +25,7 @@ do_build() {
   )
 
   export CGO_ENABLED=1
-  go build -buildvcs=false -trimpath -o elephant ./cmd/elephant
+  go build -buildmode=pie -buildvcs=false -trimpath -o elephant ./cmd/elephant
 
   for provider in "${providers[@]}"; do
     go build -buildvcs=false -buildmode=plugin -trimpath \
