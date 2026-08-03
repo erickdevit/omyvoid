@@ -29,6 +29,9 @@ conforme definido anteriormente.
 - O environment GitHub `release` existe e aceita somente `dev`, `rc`, `main` e
   tags `v*`; ainda não há aprovadores cadastrados.
 - Os workflows GitHub CI e Release estão registrados e ativos.
+- A execução `30829810675` do job hospedado foi recusada antes do primeiro passo
+  porque a conta GitHub está bloqueada por uma pendência de cobrança. Não houve
+  checkout, teste, build de pacote nem build de ISO nessa execução.
 - O GitLab CI/CD está definido em `.gitlab-ci.yml`, mas nenhum projeto remoto ou
   runner GitLab foi configurado neste ambiente.
 
@@ -151,7 +154,8 @@ paridade de hardware herdada.
 O próximo marco técnico é a build manual não assinada da primeira ISO `dev`, que
 será executada pelo mantenedor. Antes dela:
 
-1. obter o job de validação verde no container Void;
+1. regularizar a cobrança do GitHub e obter o job de validação verde no
+   container Void;
 2. cadastrar `omyvoid-builder` e construir os quatro pacotes com `xbps-src`;
 3. consultar cada pacote com `release/inspect-xbps-repo.sh`;
 4. cadastrar o runner isolado `omyvoid-release`;
