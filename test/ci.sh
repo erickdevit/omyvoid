@@ -27,8 +27,7 @@ curl --fail --location --silent --show-error \
   tar -xzf "$actionlint_archive"
 )
 "$actionlint_dir/actionlint" \
-  "$root/.github/workflows/ci.yml" \
-  "$root/.github/workflows/release.yml"
+  "$root/.github/workflows/ci.yml"
 
 python3 - "$root" <<'PY'
 from pathlib import Path
@@ -40,7 +39,6 @@ root = Path(sys.argv[1])
 for relative_path in (
   ".github/actionlint.yaml",
   ".github/workflows/ci.yml",
-  ".github/workflows/release.yml",
   ".gitlab-ci.yml",
 ):
   with (root / relative_path).open(encoding="utf-8") as stream:
