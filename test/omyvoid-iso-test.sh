@@ -114,6 +114,7 @@ assert_file_contains 'ISO final image is authored with xorriso' "$ROOT/install/i
 assert_file_contains 'ISO uses a UEFI El Torito image' "$ROOT/install/iso/build-iso.sh" '-eltorito-alt-boot -e boot/limine-uefi\.img'
 assert_file_contains 'ISO embeds the offline repository' "$ROOT/install/iso/build-iso.sh" 'image_dir/repository'
 assert_file_contains 'remote Omyvoid repository is optional during ISO bootstrap' "$ROOT/install/iso/build-iso.sh" 'if \[\[ -n \$\{OMYVOID_XBPS_REPOSITORY:-\} \]\]'
+assert_file_contains 'void-mklive is the only privileged ISO stage' "$ROOT/install/iso/build-iso.sh" 'sudo_args\[@\].*mklive\.sh'
 if rg -n -- '-b |eltorito-boot|legacy-bios|bios-cd' "$ROOT/install/iso/build-iso.sh"; then
   nok 'first ISO series does not configure Legacy BIOS boot'
 else

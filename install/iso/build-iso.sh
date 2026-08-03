@@ -44,6 +44,10 @@ for tool in cargo git xbps-install xbps-rindex xorriso mformat mmd mcopy truncat
     exit 1
   }
 done
+command -v sudo >/dev/null || {
+  echo "sudo is required to run the void-mklive stage" >&2
+  exit 1
+}
 [[ -f /usr/share/limine/BOOTX64.EFI ]] || {
   echo "Install the Void limine package before building the ISO" >&2
   exit 1
@@ -60,8 +64,20 @@ cargo build --locked --release --manifest-path "$workspace/installer/Cargo.toml"
 OMYVOID_XBPS_SIGNING_KEY='' "$workspace/release/build-xbps-repo.sh" "$repository_dir"
 mapfile -t packages < <(sed -E 's/[[:space:]]*#.*$//' "$workspace/install/omyvoid-base.packages" | awk 'NF')
 
+sudo_args=(sudo)
+if [[ ${CI:-false} == "true" ]]; then
+  sudo_args+=(-n)
+  sudo -n true || {
+    echo "CI requires non-interactive sudo for void-mklive" >&2
+    exit 1
+  }
+else
+  sudo -v
+fi
+sudo_args+=(--preserve-env=SOURCE_DATE_EPOCH)
+
 pushd "$void_mklive" >/dev/null
-./mklive.sh \
+"${sudo_args[@]}" ./mklive.sh \
   -a x86_64 \
   -T Omyvoid \
   -o "$stage_iso" \
