@@ -2,9 +2,13 @@
 
 O código é desenvolvido em `dev`, congelado em `rc` e promovido para `main` somente por ação explícita do mantenedor. Este repositório automatiza testes, build, assinatura, publicação e verificação dos artefatos; a decisão de promoção permanece manual.
 
-## Configuração do runner
+## Configuração dos runners
 
-O runner self-hosted deve usar Void Linux `x86_64-glibc` e possuir os rótulos `self-hosted`, `void-linux`, `x86_64` e `omyvoid-builder`. Instale as dependências listadas em `.github/workflows/ci.yml` e configure os segredos:
+A validação comum roda em um container Void oficial, tanto no GitHub quanto no
+GitLab. Pacotes usam um runner Void não privilegiado com o rótulo/tag
+`omyvoid-builder`; ISO e publicação usam um runner isolado
+`omyvoid-release`. Instale as dependências por
+`release/ci-prepare-void.sh` e configure os segredos:
 
 - `OMYVOID_XBPS_SIGNING_KEY`: chave RSA PEM do índice e dos pacotes XBPS.
 - `OMYVOID_XBPS_PASSPHRASE`: senha da chave XBPS, quando usada.
@@ -26,3 +30,8 @@ O runner self-hosted deve usar Void Linux `x86_64-glibc` e possuir os rótulos `
 O workflow recusa tags incompatíveis com o conteúdo do arquivo `version`. Depois
 do upload, baixa a ISO, checksum, assinatura e índice XBPS pelas URLs públicas do
 R2 e verifica os artefatos antes de criar a GitHub Release.
+
+O GitLab segue os mesmos estágios em `.gitlab-ci.yml`: `validate`, `packages`,
+`iso:dev` manual e `release` para tags. A configuração operacional completa,
+incluindo variables do tipo File no GitLab, está em
+`REMOTE_REPOSITORY_SETUP.md`.

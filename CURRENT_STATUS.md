@@ -5,11 +5,11 @@ branch `dev`.
 
 ## Decisão atual
 
-O porte possui a fundação necessária para a primeira ISO de desenvolvimento. O
-bootstrap do repositório complementar foi resolvido no código, porém a árvore
-ainda precisa de uma construção real em Void para comprovar os quatro pacotes e
-o fluxo completo da mídia. A separação de privilégios do builder continua sendo
-o bloqueador conhecido anterior a essa execução.
+O código está preparado para o mantenedor iniciar a primeira build de ISO de
+desenvolvimento. O bootstrap do repositório complementar e a separação de
+privilégios foram resolvidos: Rust e XBPS rodam como usuário comum e somente
+`void-mklive` recebe root. A árvore ainda precisa de uma construção real em Void
+para comprovar os quatro pacotes e o fluxo completo da mídia.
 
 Este relatório não inclui os testes destrutivos em QEMU nem a validação física da
 matriz de hardware. Esses testes permanecem sob responsabilidade do mantenedor,
@@ -21,13 +21,16 @@ conforme definido anteriormente.
 - `origin` aponta para `https://github.com/erickdevit/omyvoid.git`.
 - A branch local `dev` acompanha `origin/dev`.
 - `dev` é a branch padrão do GitHub.
-- A CI está registrada, mas sua primeira execução permanece na fila porque não
-  há runner self-hosted cadastrado.
-- Não há secrets, variables, environments, regras de proteção ou rulesets.
-- O arquivo `.github/workflows/release.yml` está no remoto, mas ainda não aparece
-  como workflow registrado pela API do GitHub. O arquivo passou na validação
-  sintática do `actionlint`; os únicos avisos foram os labels customizados do
-  runner ainda inexistente.
+- A validação de pull requests foi movida para `ubuntu-latest` com o container
+  Void glibc oficial; ela não depende de runner privilegiado.
+- Os jobs de pacotes e release usam runners separados, respectivamente
+  `omyvoid-builder` e `omyvoid-release`; nenhum deles está cadastrado.
+- Não há secrets, variables, regras de proteção de branch ou rulesets.
+- O environment GitHub `release` existe e aceita somente `dev`, `rc`, `main` e
+  tags `v*`; ainda não há aprovadores cadastrados.
+- Os workflows GitHub CI e Release estão registrados e ativos.
+- O GitLab CI/CD está definido em `.gitlab-ci.yml`, mas nenhum projeto remoto ou
+  runner GitLab foi configurado neste ambiente.
 
 As etapas de configuração estão documentadas em
 `REMOTE_REPOSITORY_SETUP.md`.
@@ -49,6 +52,8 @@ As etapas de configuração estão documentadas em
   `omyvoid-dracut-snapshot`.
 - Scripts de build, indexação, assinatura, inspeção da ISO e publicação do
   repositório/ISO no R2.
+- CI/CD equivalente para GitHub e GitLab, com validação isolada, pacote XBPS,
+  ISO de desenvolvimento manual, release por tag e links duráveis no R2.
 - Chromium como navegador base, com suporte opcional a conta Google preservado
   do Omarchy e exibido condicionalmente no menu de serviços.
 
@@ -63,15 +68,13 @@ em instalação, navegador padrão, políticas e integração de tema.
 Essa remoção não altera a matriz de hardware herdada, que continua registrada
 separadamente abaixo.
 
-## Bloqueadores da primeira ISO
+## Pendências operacionais da primeira ISO
 
-### Privilégios do builder
+### Runners
 
-`install/iso/build-iso.sh` exige usuário comum porque `xbps-src` não pode ser
-executado como root, mas chama `mklive.sh` sem elevação. O `void-mklive` atual
-exige root. O fluxo precisa separar a construção dos pacotes, feita como usuário
-comum, da geração da mídia, executada com os privilégios estritamente
-necessários.
+Ainda é necessário cadastrar um runner Void `omyvoid-builder` para pacotes e um
+runner Void isolado `omyvoid-release` para a ISO. A separação evita expor o host
+que executa `void-mklive` como root a código de pull requests.
 
 ### Construção real do repositório
 
@@ -95,13 +98,16 @@ No host atual, o teste estrutural da ISO passou integralmente. O teste da CLI
 passou por todos os contratos até a etapa Python; a continuação não é executável
 de forma confiável pelo Python Windows contra scripts MSYS. A suíte completa,
 `shellcheck`, `xlint`, Rust e o build XBPS permanecem como validação obrigatória
-do runner Void.
+do job de validação no container Void.
 
 ## Resultados da auditoria automatizada
 
 - Sintaxe dos scripts Bash alterados: aprovada.
+- Workflows GitHub aprovados pelo `actionlint` 1.7.12 e todos os YAMLs aprovados
+  por parser independente.
 - `omyvoid commands --check`: aprovado para 313 comandos.
 - `test/omyvoid-iso-test.sh`: aprovado integralmente.
+- Contratos estáticos de GitHub/GitLab CI/CD: implementados.
 - Teste da CLI: aprovado até a etapa que exige interoperabilidade Python/MSYS.
 - `shellcheck`, `xlint`, Rust, build real dos pacotes e build da ISO: pendentes
   no runner Void.
@@ -137,17 +143,17 @@ paridade de hardware herdada.
 - A skill diferencia explicitamente o instalador do sistema de seus subcomandos
   de software opcional.
 - `CONTRIBUTING.md` menciona um Code of Conduct ainda inexistente.
-- A documentação do runner não lista todas as dependências da build/release.
+- A documentação diferencia validação isolada, package builder e release runner,
+  incluindo as dependências e variables exigidas no GitHub e GitLab.
 
 ## Próximo marco
 
-O próximo marco técnico é uma build manual não assinada da primeira ISO `dev` em
-um runner Void. Para alcançá-lo:
+O próximo marco técnico é a build manual não assinada da primeira ISO `dev`, que
+será executada pelo mantenedor. Antes dela:
 
-1. cadastrar e preparar o runner Void;
-2. corrigir a separação de privilégios do builder;
-3. executar `xlint` e construir os quatro pacotes com `xbps-src`;
-4. consultar cada pacote no índice local;
-5. executar a suíte completa e os testes Rust no Void;
-6. gerar a ISO usando apenas o repositório complementar local;
-7. executar `release/inspect-iso.sh`.
+1. obter o job de validação verde no container Void;
+2. cadastrar `omyvoid-builder` e construir os quatro pacotes com `xbps-src`;
+3. consultar cada pacote com `release/inspect-xbps-repo.sh`;
+4. cadastrar o runner isolado `omyvoid-release`;
+5. o mantenedor gera a ISO usando o repositório complementar local;
+6. executar `release/inspect-iso.sh`.
