@@ -74,3 +74,6 @@ install_live_user_service wireplumber wireplumber
 install_live_user_service swayosd swayosd-server
 install_live_user_service elephant elephant
 install_live_user_service walker walker --gapplication-service
+
+# Purge XBPS package cache and temporary files in rootfs before SquashFS compression
+rm -rf "$rootfs/var/cache/xbps/"* "$rootfs/tmp/"* "$rootfs/var/tmp/"*
