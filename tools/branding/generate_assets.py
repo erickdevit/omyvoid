@@ -182,13 +182,21 @@ def save_png(image: Image.Image, path: Path) -> None:
 def branded_background(background: str, accent: str) -> Image.Image:
     image = Image.new("RGBA", (3840, 2160), rgba(background))
     position = ((image.width - 360) // 2, (image.height - 360) // 2)
-    composite_mark(image, size=360, position=position, color=accent, glow=34)
+    composite_mark(image, size=360, position=position, color=accent, glow=0)
+    return image
+
+
+def branded_background_text(background: str, foreground: str, accent: str) -> Image.Image:
+    image = Image.new("RGBA", (3840, 2160), rgba(background))
+    composite_mark(image, size=300, position=((image.width - 300) // 2, 700), color=accent, glow=0)
+    wordmark = render_wordmark(1100, 258, foreground)
+    image.alpha_composite(wordmark, ((image.width - 1100) // 2, 1080))
     return image
 
 
 def unlock_preview(background: str, foreground: str, accent: str) -> Image.Image:
     image = Image.new("RGBA", (1920, 1080), rgba(background))
-    composite_mark(image, size=270, position=(825, 225), color=accent, glow=24)
+    composite_mark(image, size=270, position=(825, 225), color=accent, glow=0)
     image.alpha_composite(render_wordmark(920, 216, foreground), (500, 620))
     return image
 
@@ -206,6 +214,10 @@ def generate_theme_assets() -> None:
                 ImageOps.fit(background, (1800, 1012), method=Image.Resampling.LANCZOS),
                 theme_dir / "preview.png",
             )
+            background_text = branded_background_text(
+                palette["background"], palette["foreground"], palette["accent"]
+            )
+            save_png(background_text, theme_dir / "backgrounds" / "omyvoid-text.png")
         save_png(render_wordmark(800, 188, palette["foreground"]), theme_dir / "unlock.png")
         save_png(
             unlock_preview(palette["background"], palette["foreground"], palette["accent"]),
@@ -222,13 +234,19 @@ def source_wallpaper(filename: str) -> Image.Image:
 
 
 def generate_primary_wallpapers() -> None:
-    minimal = source_wallpaper("minimal-osaka-jade.png")
-    composite_mark(minimal, size=500, position=(1670, 830), color=OSAKA["accent"], alpha=230, glow=42)
-    save_png(minimal, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoidBackground.png")
+    minimal_icon = source_wallpaper("minimal-osaka-jade.png")
+    composite_mark(minimal_icon, size=500, position=(1670, 830), color=OSAKA["accent"], alpha=230, glow=0)
+    save_png(minimal_icon, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoid.png")
+    save_png(minimal_icon, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoid-icon.png")
     save_png(
-        ImageOps.fit(minimal, (1800, 1012), method=Image.Resampling.LANCZOS),
+        ImageOps.fit(minimal_icon, (1800, 1012), method=Image.Resampling.LANCZOS),
         ROOT / "themes" / "omyvoid" / "preview.png",
     )
+
+    minimal_text = source_wallpaper("minimal-osaka-jade.png")
+    composite_mark(minimal_text, size=320, position=(1760, 680), color=OSAKA["accent"], alpha=230, glow=0)
+    minimal_text.alpha_composite(render_wordmark(1100, 258, OSAKA["foreground"]), (1370, 1080))
+    save_png(minimal_text, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoidBackground.png")
 
     rescue = source_wallpaper("rescue-osaka-jade.png")
     composite_mark(
@@ -237,11 +255,12 @@ def generate_primary_wallpapers() -> None:
         position=(3560, 1880),
         color=OSAKA["foreground"],
         alpha=115,
+        glow=0,
     )
     save_png(rescue, ROOT / "themes" / "omyvoid" / "backgrounds" / "InRescue.png")
 
     boot = source_wallpaper("minimal-osaka-jade.png")
-    composite_mark(boot, size=430, position=(2920, 865), color=OSAKA["accent"], alpha=220, glow=38)
+    composite_mark(boot, size=430, position=(2920, 865), color=OSAKA["accent"], alpha=220, glow=0)
     save_png(
         ImageOps.fit(boot, (1920, 1080), method=Image.Resampling.LANCZOS),
         ROOT / "default" / "limine" / "omyvoid-boot.png",
@@ -260,7 +279,7 @@ def generate_login_assets() -> None:
     save_png(preview, ROOT / "default" / "plymouth" / "preview-unlock.png")
 
     lockup = Image.new("RGBA", (1920, 1080), rgba(OSAKA["dark"]))
-    composite_mark(lockup, size=300, position=(810, 190), color=OSAKA["accent"], glow=30)
+    composite_mark(lockup, size=300, position=(810, 190), color=OSAKA["accent"], glow=0)
     lockup.alpha_composite(render_wordmark(920, 216, OSAKA["foreground"]), (500, 630))
     save_png(lockup, ROOT / "default" / "limine" / "omyvoid-wordmark.png")
 
