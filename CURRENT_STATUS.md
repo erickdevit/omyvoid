@@ -119,6 +119,7 @@ scripts MSYS. O build XBPS real continua dependendo de Void Linux.
 - `test/omyvoid-iso-test.sh`: contratos de plataforma, armazenamento, Limine,
   snapshots, wallpapers (4 ativos), ISO e XBPS aprovados.
 - Contratos estáticos de GitHub/GitLab CI/CD: implementados.
+- Pipeline GitLab CI/CD: estágio 'validate' executado e aprovado com SUCESSO nos runners compartilhados do GitLab (pipeline #2727948501).
 - Teste da CLI: aprovado até a etapa que exige interoperabilidade Python/MSYS.
 - Build real dos pacotes e build da ISO: pendentes no runner Void; a ISO será
   construída exclusivamente pelo mantenedor.
