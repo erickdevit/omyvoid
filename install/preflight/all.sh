@@ -56,7 +56,28 @@ if [[ -n ${OMYVOID_ONLINE_INSTALL:-} ]]; then
 
     omyvoid_repo=${OMYVOID_XBPS_REPOSITORY:-https://packages.omyvoid.org/current}
     printf 'repository=%s\n' "$omyvoid_repo" | sudo tee /etc/xbps.d/10-omyvoid.conf >/dev/null
+
+    local_repo=""
+    if [[ -d /opt/omyvoid/repository ]]; then
+      local_repo="/opt/omyvoid/repository"
+    elif [[ -d ${OMYVOID_PATH:-}/build/repository ]]; then
+      local_repo="${OMYVOID_PATH}/build/repository"
+    elif [[ -d ${OMYVOID_PATH:-}/repository ]]; then
+      local_repo="${OMYVOID_PATH}/repository"
+    fi
+
+    if [[ -n $local_repo ]]; then
+      printf 'repository=%s\n' "$local_repo" | sudo tee /etc/xbps.d/10-omyvoid-local.conf >/dev/null
+    fi
+
     sudo xbps-install -S
+
+    if ! xbps-query -R omyvoid-limine-entry-tool >/dev/null 2>&1; then
+      echo "Building custom Omyvoid XBPS packages locally..."
+      OMYVOID_XBPS_SIGNING_KEY='' "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/release/build-xbps-repo.sh" "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/build/repository"
+      printf 'repository=%s/build/repository\n' "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}" | sudo tee /etc/xbps.d/10-omyvoid-local.conf >/dev/null
+      sudo xbps-install -S
+    fi
   } >> "$OMYVOID_INSTALL_LOG_FILE" 2>&1
 
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Completed: online preflight" >> "$OMYVOID_INSTALL_LOG_FILE"
