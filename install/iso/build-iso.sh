@@ -65,6 +65,19 @@ cargo build --locked --release --manifest-path "$workspace/installer/Cargo.toml"
 OMYVOID_XBPS_SIGNING_KEY='' "$workspace/release/build-xbps-repo.sh" "$repository_dir"
 mapfile -t packages < <(sed -E 's/[[:space:]]*#.*$//' "$workspace/install/omyvoid-base.packages" | awk 'NF')
 
+if command -v xbps-query >/dev/null 2>&1; then
+  normalized_packages=()
+  for pkg in "${packages[@]}"; do
+    exact_pkg=$(xbps-query -Rs "^${pkg}$" 2>/dev/null | awk '{print $2}' | sed -E 's/-[0-9].*//' | head -n 1)
+    if [[ -n $exact_pkg ]]; then
+      normalized_packages+=("$exact_pkg")
+    else
+      normalized_packages+=("$pkg")
+    fi
+  done
+  packages=("${normalized_packages[@]}")
+fi
+
 sudo_args=(sudo)
 if [[ ${CI:-false} == "true" ]]; then
   sudo_args+=(-n)
