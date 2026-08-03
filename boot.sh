@@ -26,7 +26,7 @@ else
   echo -e "\e[32mStable branch selected\e[0m"
 fi
 
-if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID=void$' /etc/os-release; then
+if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID="?void"?$' /etc/os-release; then
   echo "Omyvoid requires a clean Void Linux x86_64-glibc installation." >&2
   exit 1
 fi

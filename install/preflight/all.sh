@@ -1,5 +1,5 @@
 # Omyvoid v1 supports only Void Linux x86_64-glibc in UEFI mode.
-if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID=void$|^ID="void"$' /etc/os-release; then
+if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID="?void"?$' /etc/os-release; then
   printf '\e[31mOmyvoid requires Void Linux.\e[0m\n' >&2
   exit 1
 fi

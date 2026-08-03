@@ -26,7 +26,7 @@ find_installations() {
   while read -r device; do
     mount -o ro,subvolid=5 "$device" "$probe_root" 2>/dev/null || continue
     if [[ -f $probe_root/@/etc/os-release ]] \
-      && grep -q '^ID=void$' "$probe_root/@/etc/os-release" \
+      && grep -Eq '^ID="?void"?$' "$probe_root/@/etc/os-release" \
       && [[ -d $probe_root/@/opt/omyvoid ]]; then
       printf '%s\n' "$device"
     fi
@@ -58,7 +58,7 @@ if (( ${#installations[@]} == 0 )); then
     exit 1
   }
   if [[ ! -f $probe_root/@/etc/os-release ]] \
-    || ! grep -q '^ID=void$' "$probe_root/@/etc/os-release" \
+    || ! grep -Eq '^ID="?void"?$' "$probe_root/@/etc/os-release" \
     || [[ ! -d $probe_root/@/opt/omyvoid ]]; then
     echo "The selected LUKS volume is not an Omyvoid installation" >&2
     exit 1

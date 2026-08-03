@@ -94,6 +94,7 @@ pushd "$void_mklive" >/dev/null
 "${sudo_args[@]}" ./mklive.sh \
   -a x86_64 \
   -T Omyvoid \
+  -z zstd \
   -o "$stage_iso" \
   -c "$build_dir/xbps-cache" \
   "${repository_args[@]}" \
