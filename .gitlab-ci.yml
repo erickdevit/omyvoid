@@ -19,7 +19,7 @@ validate:
   stage: validate
   image:
     name: ghcr.io/void-linux/void-glibc-full:latest
-    entrypoint: [""]
+    entrypoint: ["/bin/bash", "-c"]
   timeout: 45m
   before_script:
     - xbps-install -Syu xbps
