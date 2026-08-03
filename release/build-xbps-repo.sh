@@ -29,7 +29,22 @@ esac
 for tool in git xbps-rindex; do
   command -v "$tool" >/dev/null || { echo "Missing XBPS build dependency: $tool" >&2; exit 1; }
 done
-(( EUID != 0 )) || { echo "xbps-src must run as a non-root user" >&2; exit 1; }
+if (( EUID == 0 )); then
+  target_user=${SUDO_USER:-}
+  if [[ -z $target_user || $target_user == "root" ]]; then
+    target_user=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd || echo "")
+  fi
+
+  if [[ -n $target_user && $target_user != "root" ]]; then
+    echo "Delegating xbps-src build to non-root user: $target_user"
+    mkdir -p "$build_root" "$output"
+    chown -R "$target_user" "$workspace/build" 2>/dev/null || true
+    exec su - "$target_user" -c "OMYVOID_XBPS_SIGNING_KEY='${OMYVOID_XBPS_SIGNING_KEY:-}' '$workspace/release/build-xbps-repo.sh' '$output'"
+  else
+    echo "xbps-src must run as a non-root user" >&2
+    exit 1
+  fi
+fi
 
 mkdir -p "$build_root" "$output"
 if [[ -d $void_packages/.git ]]; then

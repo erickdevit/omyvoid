@@ -44,7 +44,7 @@ if [[ -n ${OMYVOID_ONLINE_INSTALL:-} ]]; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting: online preflight" >> "$OMYVOID_INSTALL_LOG_FILE"
 
   {
-    sudo xbps-install -Sy void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree ca-certificates
+    sudo xbps-install -Sy void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree ca-certificates || true
 
     sudo install -d -m 0755 /etc/xbps.d
     if [[ ! -f /etc/xbps.d/00-repository-main.conf ]]; then
@@ -55,7 +55,11 @@ if [[ -n ${OMYVOID_ONLINE_INSTALL:-} ]]; then
     fi
 
     omyvoid_repo=${OMYVOID_XBPS_REPOSITORY:-https://packages.omyvoid.org/current}
-    printf 'repository=%s\n' "$omyvoid_repo" | sudo tee /etc/xbps.d/10-omyvoid.conf >/dev/null
+    if curl -sI -m 3 "$omyvoid_repo/x86_64-repodata" >/dev/null 2>&1; then
+      printf 'repository=%s\n' "$omyvoid_repo" | sudo tee /etc/xbps.d/10-omyvoid.conf >/dev/null
+    else
+      sudo rm -f /etc/xbps.d/10-omyvoid.conf
+    fi
 
     local_repo=""
     if [[ -d /opt/omyvoid/repository ]]; then
@@ -70,12 +74,13 @@ if [[ -n ${OMYVOID_ONLINE_INSTALL:-} ]]; then
       printf 'repository=%s\n' "$local_repo" | sudo tee /etc/xbps.d/10-omyvoid-local.conf >/dev/null
     fi
 
-    sudo xbps-install -S
+    sudo xbps-install -S || true
 
     if ! xbps-query -R omyvoid-limine-entry-tool >/dev/null 2>&1; then
       echo "Building custom Omyvoid XBPS packages locally..."
-      OMYVOID_XBPS_SIGNING_KEY='' "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/release/build-xbps-repo.sh" "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/build/repository"
-      printf 'repository=%s/build/repository\n' "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}" | sudo tee /etc/xbps.d/10-omyvoid-local.conf >/dev/null
+      omyvoid_root="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+      OMYVOID_XBPS_SIGNING_KEY='' "$omyvoid_root/release/build-xbps-repo.sh" "$omyvoid_root/build/repository"
+      printf 'repository=%s/build/repository\n' "$omyvoid_root" | sudo tee /etc/xbps.d/10-omyvoid-local.conf >/dev/null
       sudo xbps-install -S
     fi
   } >> "$OMYVOID_INSTALL_LOG_FILE" 2>&1
