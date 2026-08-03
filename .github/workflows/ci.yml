@@ -10,42 +10,28 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: [self-hosted, void-linux, x86_64, omyvoid-builder]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-glibc-full:latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify runner and dependencies
+      - name: Bootstrap checkout dependencies
         run: |
-          grep -q '^ID=void$' /etc/os-release
-          sudo xbps-install -Syu
-          sudo xbps-install -Sy bash cargo git jq ripgrep shellcheck xtools xorriso
+          xbps-install -Syu xbps
+          xbps-install -Sy bash ca-certificates git
 
-      - name: ShellCheck
-        run: |
-          scripts=()
-          while IFS= read -r script; do
-            [[ $(head -n 1 "$script") == *python* ]] && continue
-            scripts+=("$script")
-          done < <(find bin install release test -type f \( -name '*.sh' -o -path 'bin/omyvoid*' \))
-          shellcheck -S error -s bash -e SC1090,SC1091 "${scripts[@]}"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Bash, CLI and architecture tests
-        run: test/run.sh
+      - name: Prepare Void validation environment
+        run: release/ci-prepare-void.sh test
 
-      - name: Rust format, lint and tests
-        run: |
-          cargo fmt --manifest-path installer/Cargo.toml -- --check
-          cargo clippy --locked --manifest-path installer/Cargo.toml --all-targets -- -D warnings
-          cargo test --locked --manifest-path installer/Cargo.toml
-
-      - name: Validate XBPS templates
-        run: |
-          for template in xbps-src/srcpkgs/*/template; do
-            xlint "$template"
-          done
+      - name: Validate source, CLI, Rust and XBPS templates
+        run: test/ci.sh
 
   packages:
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev'
@@ -53,21 +39,14 @@ jobs:
     runs-on: [self-hosted, void-linux, x86_64, omyvoid-builder]
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare Void package builder
+        run: release/ci-prepare-void.sh packages
       - name: Build complementary XBPS repository
         run: release/build-xbps-repo.sh build/repository
       - name: Inspect repository
-        run: |
-          test -f build/repository/x86_64-repodata
-          test "$(find build/repository -maxdepth 1 -type f -name '*.xbps' | wc -l)" -eq 4
-          for package in \
-            elephant \
-            omyvoid-dracut-snapshot \
-            omyvoid-limine-entry-tool \
-            omyvoid-limine-snapper-sync; do
-            xbps-query --repository="$PWD/build/repository" "$package"
-          done
-      - uses: actions/upload-artifact@v4
+        run: release/inspect-xbps-repo.sh build/repository
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: omyvoid-xbps-${{ github.sha }}
           path: build/repository

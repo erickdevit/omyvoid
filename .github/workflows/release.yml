@@ -8,10 +8,20 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
-    runs-on: [self-hosted, void-linux, x86_64, omyvoid-builder]
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/rc' ||
+      github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, void-linux, x86_64, omyvoid-release]
     timeout-minutes: 240
+    environment: release
     env:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -21,9 +31,12 @@ jobs:
       OMYVOID_XBPS_PUBLIC_URL: ${{ vars.OMYVOID_XBPS_PUBLIC_URL }}
       XBPS_PASSPHRASE: ${{ secrets.OMYVOID_XBPS_PASSPHRASE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Prepare Void release builder
+        run: release/ci-prepare-void.sh builder
 
       - name: Validate release identity
         run: |
@@ -33,10 +46,30 @@ jobs:
             exit 1
           fi
 
-      - name: Test source
+      - name: Validate release configuration
+        env:
+          XBPS_KEY: ${{ secrets.OMYVOID_XBPS_SIGNING_KEY }}
+          MINISIGN_SECRET: ${{ secrets.OMYVOID_MINISIGN_SECRET_KEY }}
+          MINISIGN_PUBLIC: ${{ secrets.OMYVOID_MINISIGN_PUBLIC_KEY }}
         run: |
-          test/run.sh
-          cargo test --locked --manifest-path installer/Cargo.toml
+          for variable in \
+            R2_ACCESS_KEY_ID \
+            R2_SECRET_ACCESS_KEY \
+            R2_ACCOUNT_ID \
+            R2_BUCKET \
+            OMYVOID_R2_PUBLIC_URL \
+            OMYVOID_XBPS_PUBLIC_URL \
+            XBPS_KEY \
+            MINISIGN_SECRET \
+            MINISIGN_PUBLIC; do
+            [[ -n ${!variable:-} ]] || {
+              echo "Missing release configuration: $variable" >&2
+              exit 1
+            }
+          done
+
+      - name: Test source
+        run: test/ci.sh
 
       - name: Materialize signing keys
         env:
@@ -64,7 +97,7 @@ jobs:
           OMYVOID_MINISIGN_PUBLIC_KEY_FILE: ${{ runner.temp }}/omyvoid-minisign.pub
         run: release/publish-r2.sh "build/omyvoid-$(cat version)-x86_64.iso" build/iso/repository
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: omyvoid-${{ github.sha }}
           path: |
@@ -83,3 +116,11 @@ jobs:
           [[ $version == *-* ]] && prerelease=(--prerelease)
           gh release create "$GITHUB_REF_NAME" build/*.iso build/*.sha256 build/*.minisig \
             --title "Omyvoid $version" --generate-notes "${prerelease[@]}"
+
+      - name: Remove materialized signing keys
+        if: always()
+        run: |
+          rm -f \
+            "$RUNNER_TEMP/omyvoid-xbps.pem" \
+            "$RUNNER_TEMP/omyvoid-minisign.key" \
+            "$RUNNER_TEMP/omyvoid-minisign.pub"

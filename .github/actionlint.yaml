@@ -1,0 +1,8 @@
+self-hosted-runner:
+  labels:
+    - void-linux
+    - x86_64
+    - omyvoid-builder
+    - omyvoid-release
+
+config-variables: null
