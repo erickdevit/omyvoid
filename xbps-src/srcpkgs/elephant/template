@@ -3,6 +3,7 @@ pkgname=elephant
 version=2.22.0
 revision=1
 archs="x86_64"
+nopie=yes
 hostmakedepends="go"
 short_desc="Plugin-based data provider service for Walker"
 maintainer="Erick Bruno <erickwornex@gmail.com>"
