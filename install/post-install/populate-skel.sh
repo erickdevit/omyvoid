@@ -30,6 +30,5 @@ ln -snf /opt/omyvoid /etc/skel/.local/share/omyvoid
 
 # Remove socket/lock files if any
 rm -rf /etc/skel/.config/chromium/SingletonLock
-rm -rf /etc/skel/.config/google-chrome/SingletonLock
 
 # Waybar, mako and hypridle are started by the Omyvoid Hyprland session.

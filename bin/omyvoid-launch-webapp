@@ -6,11 +6,10 @@
 browser=$(xdg-settings get default-web-browser)
 
 case $browser in
-  *chrom* | *Chrom* | *brave* | *edge* | *opera* | *vivaldi* | *helium*)
+  chromium.desktop)
     ;;
   *)
-    # Fallback for Firefox or others that don't support --app
-    # Try to find a chromium-based browser available on the system
+    # Firefox does not support Chromium's --app mode.
     browser="chromium.desktop"
     ;;
 esac

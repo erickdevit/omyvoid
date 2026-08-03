@@ -16,9 +16,9 @@ xdg-mime default imv.desktop image/tiff
 xdg-mime default org.gnome.Evince.desktop application/pdf
 
 # Use Google Chrome as the default browser
-xdg-settings set default-web-browser google-chrome.desktop
-xdg-mime default google-chrome.desktop x-scheme-handler/http
-xdg-mime default google-chrome.desktop x-scheme-handler/https
+xdg-settings set default-web-browser chromium.desktop
+xdg-mime default chromium.desktop x-scheme-handler/http
+xdg-mime default chromium.desktop x-scheme-handler/https
 
 # Open video files with mpv
 xdg-mime default mpv.desktop video/mp4

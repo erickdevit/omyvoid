@@ -187,6 +187,7 @@ export I18N_INS_BROWSER="  Navegador"
 export I18N_INS_AI="󱚤  IA"
 export I18N_INS_GAMING="  Juegos"
 export I18N_INS_WINDOWS="󰍲  Windows"
+export I18N_INS_CHROMIUM_ACCOUNT="  Cuenta de Chromium"
 
 # Install AI Submenu
 export I18N_AI_DICTATION="  Dictado de Voz"
@@ -194,9 +195,7 @@ export I18N_AI_DICTATION="  Dictado de Voz"
 # Install Gaming Submenu
 export I18N_GAM_XBOX_CLOUD="  Xbox Cloud Gaming"
 export I18N_GAM_XBOX_CONTROLLER="󰂯  Mando de Xbox"
-export I18N_GAM_MOONLIGHT="󰍹  Moonlight (GameStream)"
 export I18N_GAM_LUTRIS="  Lutris (Battle.net)"
-export I18N_GAM_HEROIC="󱓟  Heroic (Epic Games)"
 export I18N_GAM_RETRO_LAUNCHER="󰯉  Lanzador de Juegos RetroArch"
 
 # Remove Menu
@@ -679,4 +678,3 @@ export I18N_HYPRLOCK_PLACEHOLDER="Introducir contraseña"
 export I18N_POWER_PERFORMANCE="Alto Rendimiento"
 export I18N_POWER_BALANCED="Equilibrado"
 export I18N_POWER_POWER_SAVER="Ahorro de Energía"
-

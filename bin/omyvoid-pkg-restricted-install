@@ -4,7 +4,7 @@
 # omyvoid:group=pkg
 # omyvoid:name=restricted install
 # omyvoid:args=<package>
-# omyvoid:examples=omyvoid pkg restricted install google-chrome
+# omyvoid:examples=omyvoid pkg restricted install discord
 
 set -euo pipefail
 

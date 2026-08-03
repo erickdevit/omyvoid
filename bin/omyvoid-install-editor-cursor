@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# omyvoid:summary=Report availability of the Cursor XBPS template
-
-echo 'Cursor has no approved Omyvoid xbps-src template yet.' >&2
-echo 'Omyvoid will not install its AppImage or standalone installer.' >&2
-exit 1

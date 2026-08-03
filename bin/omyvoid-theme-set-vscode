@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# omyvoid:summary=Sync Omyvoid theme to VS Code, VSCodium, and Cursor
+# omyvoid:summary=Sync Omyvoid theme to VS Code and VSCodium
 # omyvoid:hidden=true
 
 VS_CODE_THEME="$HOME/.config/omyvoid/current/theme/vscode.json"
@@ -37,4 +37,3 @@ set_theme() {
 ! omyvoid-toggle-enabled skip-vscode-theme-changes && set_theme "code" "$HOME/.config/Code/User/settings.json"
 ! omyvoid-toggle-enabled skip-vscode-insiders-theme-changes && set_theme "code-insiders" "$HOME/.config/Code - Insiders/User/settings.json"
 ! omyvoid-toggle-enabled skip-codium-theme-changes && set_theme "codium" "$HOME/.config/VSCodium/User/settings.json"
-! omyvoid-toggle-enabled skip-cursor-theme-changes && set_theme "cursor" "$HOME/.config/Cursor/User/settings.json"

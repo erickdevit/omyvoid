@@ -10,25 +10,14 @@ browser_exec=$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' \
   /usr/share/applications/"$default_browser" \
   /usr/local/share/applications/"$default_browser" 2>/dev/null | head -1)
 
-if $browser_exec --help 2>/dev/null | grep -q MOZ_LOG; then
+if "$browser_exec" --help 2>/dev/null | grep -q MOZ_LOG; then
   private_flag="--private-window"
-elif [[ $browser_exec =~ edge ]]; then
-  private_flag="--inprivate"
 else
   private_flag="--incognito"
 fi
 
-# Determine flags file based on browser executable
 flags_file=""
-if [[ $browser_exec =~ chrome ]]; then
-  flags_file="$HOME/.config/chrome-flags.conf"
-elif [[ $browser_exec =~ brave-browser-beta ]]; then
-  flags_file="$HOME/.config/brave-origin-beta-flags.conf"
-elif [[ $browser_exec =~ brave ]]; then
-  flags_file="$HOME/.config/brave-flags.conf"
-elif [[ $browser_exec =~ edge ]]; then
-  flags_file="$HOME/.config/microsoft-edge-stable-flags.conf"
-elif [[ $browser_exec =~ chromium ]]; then
+if [[ $browser_exec =~ chromium ]]; then
   flags_file="$HOME/.config/chromium-flags.conf"
 fi
 

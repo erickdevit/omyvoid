@@ -470,32 +470,17 @@ browser_desktop_exists() {
 show_setup_default_browser_menu() {
   local options=""
   browser_desktop_exists chromium.desktop && options="$options  Chromium"
-  browser_desktop_exists google-chrome.desktop && options="${options:+$options\n}󰊯  Chrome"
-  browser_desktop_exists brave-browser.desktop && options="${options:+$options\n}󰖟  Brave"
-  browser_desktop_exists brave-origin-beta.desktop && options="${options:+$options\n}󰖟  Brave Origin"
-  browser_desktop_exists microsoft-edge.desktop && options="${options:+$options\n}󰇩  Edge"
   browser_desktop_exists firefox.desktop && options="${options:+$options\n}󰈹  Firefox"
-  browser_desktop_exists zen.desktop && options="${options:+$options\n}󰖟  Zen"
 
   local current=""
   case "$(omyvoid-default-browser)" in
   chromium) current="  Chromium" ;;
-  chrome) current="󰊯  Chrome" ;;
-  brave) current="󰖟  Brave" ;;
-  brave-origin) current="󰖟  Brave Origin" ;;
-  edge) current="󰇩  Edge" ;;
   firefox) current="󰈹  Firefox" ;;
-  zen) current="󰖟  Zen" ;;
   esac
 
   case $(menu "$I18N_SET_DEFAULT_BROWSER" "$options" "" "$current") in
   *Chromium*) omyvoid-default-browser chromium ;;
-  *Chrome*) omyvoid-default-browser chrome ;;
-  *"Brave Origin"*) omyvoid-default-browser brave-origin ;;
-  *Brave*) omyvoid-default-browser brave ;;
-  *Edge*) omyvoid-default-browser edge ;;
   *Firefox*) omyvoid-default-browser firefox ;;
-  *Zen*) omyvoid-default-browser zen ;;
   *) show_setup_default_menu ;;
   esac
 }
@@ -528,8 +513,6 @@ show_setup_default_editor_menu() {
   local options=""
   omyvoid-cmd-present nvim && options="$options  Neovim"
   omyvoid-cmd-present code && options="${options:+$options\n}  VSCode"
-  omyvoid-cmd-present cursor && options="${options:+$options\n}  Cursor"
-  omyvoid-cmd-present zeditor && options="${options:+$options\n}  Zed"
   omyvoid-cmd-present sublime_text && options="${options:+$options\n}  Sublime Text"
   omyvoid-cmd-present helix && options="${options:+$options\n}  Helix"
   omyvoid-cmd-present vim && options="${options:+$options\n}  Vim"
@@ -539,8 +522,6 @@ show_setup_default_editor_menu() {
   case "$(omyvoid-default-editor)" in
   nvim) current="  Neovim" ;;
   code) current="  VSCode" ;;
-  cursor) current="  Cursor" ;;
-  zed | zeditor) current="  Zed" ;;
   sublime_text) current="  Sublime Text" ;;
   helix) current="  Helix" ;;
   vim) current="  Vim" ;;
@@ -550,8 +531,6 @@ show_setup_default_editor_menu() {
   case $(menu "$I18N_SET_DEFAULT_EDITOR" "$options" "" "$current") in
   *Neovim*) omyvoid-default-editor nvim ;;
   *VSCode*) omyvoid-default-editor code ;;
-  *Cursor*) omyvoid-default-editor cursor ;;
-  *Zed*) omyvoid-default-editor zed ;;
   *Sublime*) omyvoid-default-editor sublime_text ;;
   *Helix*) omyvoid-default-editor helix ;;
   *Vim*) omyvoid-default-editor vim ;;
@@ -616,34 +595,33 @@ show_install_menu() {
 }
 
 show_install_browser_menu() {
-  case $(menu "$I18N_MENU_INSTALL" "  Chrome\n  Edge\n  Brave\n  Brave Origin\n  Firefox\n󰖟  Zen") in
-  *Chrome*) present_terminal "omyvoid-install-browser chrome" ;;
-  *Edge*) present_terminal "omyvoid-install-browser edge" ;;
-  *"Brave Origin"*) present_terminal "omyvoid-install-browser brave-origin" ;;
-  *Brave*) present_terminal "omyvoid-install-browser brave" ;;
+  case $(menu "$I18N_MENU_INSTALL" "  Chromium\n  Firefox") in
+  *Chromium*) present_terminal "omyvoid-install-browser chromium" ;;
   *Firefox*) present_terminal "omyvoid-install-browser firefox" ;;
-  *Zen*) present_terminal "omyvoid-install-browser zen" ;;
   *) show_install_menu ;;
   esac
 }
 
 show_install_service_menu() {
-  case $(menu "$I18N_MENU_INSTALL" "  Dropbox\n  Tailscale\n󱇱  NordVPN\n☀  Sunshine\n󰟵  Bitwarden\n  Chromium Account") in
+  local options="  Dropbox\n  Tailscale\n󰟵  Bitwarden"
+
+  if [[ -f ~/.config/chromium-flags.conf ]] && \
+    ! grep -q -- '--oauth2-client-id' ~/.config/chromium-flags.conf; then
+    options="$options\n$I18N_INS_CHROMIUM_ACCOUNT"
+  fi
+
+  case $(menu "$I18N_MENU_INSTALL" "$options") in
   *Dropbox*) present_terminal omyvoid-install-dropbox ;;
   *Tailscale*) present_terminal omyvoid-install-tailscale ;;
-  *NordVPN*) present_terminal omyvoid-install-nordvpn ;;
-  *Sunshine*) present_terminal omyvoid-install-service-sunshine ;;
   *Bitwarden*) install_and_launch "Bitwarden" "bitwarden" "bitwarden" ;;
-  *Chromium*) present_terminal omyvoid-install-chromium-google-account ;;
+  *"$I18N_INS_CHROMIUM_ACCOUNT"*) present_terminal omyvoid-install-chromium-google-account ;;
   *) show_install_menu ;;
   esac
 }
 
 show_install_editor_menu() {
-  case $(menu "$I18N_MENU_INSTALL" "  VSCode\n  Cursor\n  Zed\n  Sublime Text\n  Helix\n  Vim\n  Emacs") in
+  case $(menu "$I18N_MENU_INSTALL" "  VSCode\n  Sublime Text\n  Helix\n  Vim\n  Emacs") in
   *VSCode*) present_terminal omyvoid-install-vscode ;;
-  *Cursor*) present_terminal omyvoid-install-editor-cursor ;;
-  *Zed*) present_terminal omyvoid-install-zed ;;
   *Sublime*) install_and_launch "Sublime Text" "sublime-text" "sublime_text" ;;
   *Helix*) present_terminal omyvoid-install-helix ;;
   *Vim*) install "Vim" "vim" ;;
@@ -663,9 +641,8 @@ show_install_terminal_menu() {
 }
 
 show_install_ai_menu() {
-  case $(menu "$I18N_MENU_INSTALL" "$I18N_AI_DICTATION\n󱚤  Ollama\n󰚩  OpenCode\n󰚩  Antigravitty\n󰚩  Claude Code\n󰚩  Codex") in
+  case $(menu "$I18N_MENU_INSTALL" "$I18N_AI_DICTATION\n󰚩  OpenCode\n󰚩  Antigravitty\n󰚩  Claude Code\n󰚩  Codex") in
   *"$I18N_AI_DICTATION"*) present_terminal omyvoid-voxtype-install ;;
-  *Ollama*) present_terminal omyvoid-install-ai-ollama ;;
   *OpenCode*) present_terminal omyvoid-install-ai-opencode ;;
   *Antigravitty*) present_terminal omyvoid-install-ai-antigravity ;;
   *Claude*) present_terminal omyvoid-install-ai-claude ;;
@@ -675,17 +652,14 @@ show_install_ai_menu() {
 }
 
 show_install_gaming_menu() {
-  case $(menu "$I18N_MENU_INSTALL" "  Steam\n󰯉  RetroArch\n󰍳  Minecraft\n󰢹  NVIDIA GeForce NOW\n$I18N_GAM_XBOX_CLOUD\n$I18N_GAM_XBOX_CONTROLLER\n$I18N_GAM_MOONLIGHT\n$I18N_GAM_LUTRIS\n$I18N_GAM_HEROIC\n$I18N_GAM_RETRO_LAUNCHER") in
+  case $(menu "$I18N_MENU_INSTALL" "  Steam\n󰯉  RetroArch\n󰢹  NVIDIA GeForce NOW\n$I18N_GAM_XBOX_CLOUD\n$I18N_GAM_XBOX_CONTROLLER\n$I18N_GAM_LUTRIS\n$I18N_GAM_RETRO_LAUNCHER") in
   *Steam*) present_terminal omyvoid-install-gaming-steam ;;
   *"$I18N_GAM_RETRO_LAUNCHER"*) omyvoid-games-retro-install ;;
   *RetroArch*) present_terminal omyvoid-install-gaming-retroarch ;;
-  *Minecraft*) present_terminal omyvoid-install-gaming-minecraft ;;
   *GeForce*) present_terminal omyvoid-install-gaming-geforce-now ;;
   *"$I18N_GAM_XBOX_CLOUD"*) present_terminal omyvoid-install-gaming-xbox-cloud ;;
   *"$I18N_GAM_XBOX_CONTROLLER"*) present_terminal omyvoid-install-gaming-xbox-controllers ;;
   *"$I18N_GAM_LUTRIS"*) present_terminal omyvoid-install-gaming-lutris ;;
-  *"$I18N_GAM_HEROIC"*) present_terminal omyvoid-install-gaming-heroic ;;
-  *"$I18N_GAM_MOONLIGHT"*) present_terminal omyvoid-install-gaming-moonlight ;;
   *) show_install_menu ;;
   esac
 }
@@ -783,28 +757,20 @@ show_remove_security_menu() {
 }
 
 show_remove_browser_menu() {
-  case $(menu "$I18N_MENU_REMOVE" "  Chrome\n  Edge\n  Brave\n  Brave Origin\n  Firefox\n  Zen") in
-  *Chrome*) present_terminal "omyvoid-remove-browser chrome" ;;
-  *Edge*) present_terminal "omyvoid-remove-browser edge" ;;
-  *"Brave Origin"*) present_terminal "omyvoid-remove-browser brave-origin" ;;
-  *Brave*) present_terminal "omyvoid-remove-browser brave" ;;
+  case $(menu "$I18N_MENU_REMOVE" "  Firefox") in
   *Firefox*) present_terminal "omyvoid-remove-browser firefox" ;;
-  *Zen*) present_terminal "omyvoid-remove-browser zen" ;;
   *) show_remove_menu ;;
   esac
 }
 
 show_remove_gaming_menu() {
-  case $(menu "$I18N_MENU_REMOVE" "  Steam\n  RetroArch\n󰍳  Minecraft\n󰢹  NVIDIA GeForce NOW\n$I18N_GAM_XBOX_CLOUD\n$I18N_GAM_XBOX_CONTROLLER\n$I18N_GAM_MOONLIGHT\n$I18N_GAM_LUTRIS\n$I18N_GAM_HEROIC") in
+  case $(menu "$I18N_MENU_REMOVE" "  Steam\n  RetroArch\n󰢹  NVIDIA GeForce NOW\n$I18N_GAM_XBOX_CLOUD\n$I18N_GAM_XBOX_CONTROLLER\n$I18N_GAM_LUTRIS") in
   *Steam*) present_terminal omyvoid-remove-gaming-steam ;;
   *RetroArch*) present_terminal omyvoid-remove-gaming-retroarch ;;
-  *Minecraft*) present_terminal omyvoid-remove-gaming-minecraft ;;
   *GeForce*) present_terminal omyvoid-remove-gaming-geforce-now ;;
   *"$I18N_GAM_XBOX_CLOUD"*) present_terminal omyvoid-remove-gaming-xbox-cloud ;;
   *"$I18N_GAM_XBOX_CONTROLLER"*) present_terminal omyvoid-remove-gaming-xbox-controllers ;;
-  *"$I18N_GAM_MOONLIGHT"*) present_terminal omyvoid-remove-gaming-moonlight ;;
   *"$I18N_GAM_LUTRIS"*) present_terminal omyvoid-remove-gaming-lutris ;;
-  *"$I18N_GAM_HEROIC"*) present_terminal omyvoid-remove-gaming-heroic ;;
   *) show_remove_menu ;;
   esac
 }

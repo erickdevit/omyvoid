@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# omyvoid:summary=Apply the current theme color to Chromium, Chrome, Edge, and Brave
+# omyvoid:summary=Apply the current theme color to Chromium
 # omyvoid:hidden=true
 
 CHROMIUM_THEME=~/.config/omyvoid/current/theme/chromium.theme
@@ -32,13 +32,3 @@ refresh_running_browser() {
 
 set_browser_policy /etc/chromium/policies/managed
 refresh_running_browser chromium chromium
-
-set_browser_policy /etc/opt/chrome/policies/managed
-refresh_running_browser chrome google-chrome-stable || refresh_running_browser chrome google-chrome
-
-set_browser_policy /etc/opt/edge/policies/managed
-refresh_running_browser msedge microsoft-edge-stable
-
-set_browser_policy /etc/brave/policies/managed
-refresh_running_browser brave brave
-refresh_running_browser brave-origin-beta brave-origin-beta -f

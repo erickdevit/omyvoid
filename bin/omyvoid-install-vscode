@@ -6,7 +6,7 @@ set -euo pipefail
 trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
 
 echo "Installing VSCode..."
-omyvoid-pkg-add code
+omyvoid-pkg-add vscode
 
 mkdir -p ~/.vscode ~/.config/Code/User
 

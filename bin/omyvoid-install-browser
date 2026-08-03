@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # omyvoid:summary=Install a supported browser through XBPS
-# omyvoid:args=<chromium|firefox|chrome|brave|edge|zen>
-# omyvoid:examples=omyvoid install browser firefox | omyvoid install browser chrome
+# omyvoid:args=<chromium|firefox>
+# omyvoid:examples=omyvoid install browser chromium | omyvoid install browser firefox
 
 set -euo pipefail
 
@@ -11,28 +11,13 @@ case "$browser" in
   chromium|firefox)
     package=$browser
     ;;
-  chrome)
-    package=google-chrome
-    ;;
-  brave)
-    package=brave-browser
-    ;;
-  edge)
-    package=microsoft-edge
-    ;;
-  zen)
-    package=zen-browser
-    ;;
   *)
-    echo "Usage: omyvoid install browser <chromium|firefox|chrome|brave|edge|zen>" >&2
+    echo "Usage: omyvoid install browser <chromium|firefox>" >&2
     exit 2
     ;;
 esac
 
-case "$package" in
-  chromium|firefox) omyvoid-pkg-add "$package" ;;
-  *) omyvoid-pkg-restricted-install "$package" ;;
-esac
+omyvoid-pkg-add "$package"
 
 case "$package" in
   firefox)
@@ -41,6 +26,7 @@ case "$package" in
     ;;
   chromium)
     sudo install -d -m 0775 /etc/chromium/policies/managed
+    [[ -f ~/.config/chromium-flags.conf ]] || omyvoid-refresh-chromium
     ;;
 esac
 

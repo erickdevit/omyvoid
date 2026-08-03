@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# omyvoid:summary=Install Minecraft Launcher through a restricted XBPS template
-
-set -euo pipefail
-omyvoid-pkg-restricted-install minecraft-launcher
-setsid minecraft-launcher >/dev/null 2>&1 &

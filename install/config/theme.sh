@@ -7,7 +7,7 @@ sudo chmod a+rw /etc/chromium/policies/managed
 
 # Set initial theme
 omyvoid-theme-set "Omyvoid"
-rm -rf ~/.config/chromium/SingletonLock ~/.config/google-chrome/SingletonLock
+rm -rf ~/.config/chromium/SingletonLock
 
 # Set specific app links for current theme
 mkdir -p ~/.config/btop/themes

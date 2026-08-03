@@ -79,12 +79,8 @@ output=$("$CLI" theme --help)
 assert_output_contains "group help renders" "$output" "Theme commands"
 
 output=$("$CLI" install --help)
-assert_output_contains "install group help renders" "$output" "Install commands"
+assert_output_contains "system installer help renders" "$output" "Start the Omyvoid TUI installer"
 assert_output_contains "install group includes browser route" "$output" "omyvoid install browser"
-
-output=$("$CLI" install)
-assert_output_contains "bare group renders help instead of picker" "$output" "Install commands"
-assert_output_contains "bare group includes browser route" "$output" "omyvoid install browser"
 
 output=$("$CLI" toggle)
 assert_output_contains "bare root command with children renders help" "$output" "Toggle commands"

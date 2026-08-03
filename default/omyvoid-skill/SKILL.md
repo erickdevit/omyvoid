@@ -115,7 +115,8 @@ Run `omyvoid --help` for the full list. The most common groups:
 | `omyvoid restart` | Restart a service/app | `omyvoid restart waybar` |
 | `omyvoid toggle` | Toggle feature on/off | `omyvoid toggle nightlight` |
 | `omyvoid theme` | Theme management | `omyvoid theme set <name>` |
-| `omyvoid install` | Install optional software / packages | `omyvoid install docker dbs` |
+  | `omyvoid install` | Start the Omyvoid system installer | `omyvoid install` |
+  | `omyvoid install <command>` | Install optional software / packages | `omyvoid install browser chromium` |
 | `omyvoid launch` | Launch apps | `omyvoid launch browser` |
 | `omyvoid capture` | Screenshots and recordings | `omyvoid capture screenshot` |
 | `omyvoid reminder` | Desktop notification reminders | `omyvoid reminder 15 "Pickup Jack"` |

@@ -6,7 +6,7 @@ set -euo pipefail
 trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
 
 echo "Installing all dependencies..."
-omyvoid-pkg-add nautilus-dropbox libayatana-appindicator3-1
+omyvoid-pkg-add nautilus-dropbox libayatana-appindicator
 
 echo "Starting Dropbox..."
   dropbox start -i &>/dev/null &
