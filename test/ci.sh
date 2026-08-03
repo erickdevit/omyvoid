@@ -54,5 +54,5 @@ cargo clippy --locked --manifest-path "$root/installer/Cargo.toml" --all-targets
 cargo test --locked --manifest-path "$root/installer/Cargo.toml"
 
 for template in "$root"/xbps-src/srcpkgs/*/template; do
-  xlint "$template"
+  "$root/release/xlint-xbps-template.sh" "$template"
 done

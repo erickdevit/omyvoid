@@ -2,13 +2,14 @@
 pkgname=omyvoid-limine-snapper-sync
 version=0.1.0.dev.1
 revision=1
-archs=noarch
 depends="bash btrfs-progs snapper libnotify"
 short_desc="Omyvoid Snapper retention, Limine synchronization and root rollback"
-maintainer="Erick Dev <erickdevit@users.noreply.github.com>"
+maintainer="Erick Bruno <erickwornex@gmail.com>"
 license="MIT"
+homepage="https://github.com/erickdevit/omyvoid"
 
 do_install() {
+  vlicense "${FILESDIR}/LICENSE"
   vbin "${FILESDIR}/omyvoid-snapshot"
   vinstall "${FILESDIR}/root" 0644 etc/snapper/configs
   vinstall "${FILESDIR}/omyvoid-snapshot-notify.desktop" 0644 etc/xdg/autostart

@@ -5,7 +5,7 @@ revision=1
 archs="x86_64"
 hostmakedepends="go"
 short_desc="Plugin-based data provider service for Walker"
-maintainer="Erick Dev <erickdevit@users.noreply.github.com>"
+maintainer="Erick Bruno <erickwornex@gmail.com>"
 license="GPL-3.0-only"
 homepage="https://github.com/abenz1267/elephant"
 distfiles="https://github.com/abenz1267/elephant/archive/refs/tags/v${version}.tar.gz"
@@ -37,8 +37,6 @@ do_install() {
   local provider
 
   vbin elephant
-  vlicense LICENSE
-
   for provider in *.so; do
     vinstall "$provider" 0755 etc/xdg/elephant/providers
   done

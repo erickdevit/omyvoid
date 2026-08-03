@@ -52,15 +52,18 @@ cp "$workspace/bin/omyvoid-boot-refresh" "$workspace/bin/omyvoid-boot-repair" \
   "$workspace/bin/omyvoid-boot-snapshot-build" "$workspace/bin/omyvoid-uki-build" "$entry_files/"
 cp "$workspace/default/kernel.d/60-omyvoid-limine" "$entry_files/"
 cp "$workspace/default/limine/limine.conf" "$workspace/default/limine/omyvoid-boot.png" "$entry_files/"
+install -m 0644 "$workspace/LICENSE" "$entry_files/LICENSE"
 
 snapshot_files="$void_packages/srcpkgs/omyvoid-limine-snapper-sync/files"
 mkdir -p "$snapshot_files"
 cp "$workspace/bin/omyvoid-snapshot" "$workspace/default/snapper/root" \
   "$workspace/config/autostart/omyvoid-snapshot-notify.desktop" "$snapshot_files/"
+install -m 0644 "$workspace/LICENSE" "$snapshot_files/LICENSE"
 
 dracut_files="$void_packages/srcpkgs/omyvoid-dracut-snapshot/files"
 mkdir -p "$dracut_files"
 cp "$workspace/default/dracut/95omyvoid-snapshot-overlay/"* "$dracut_files/"
+install -m 0644 "$workspace/LICENSE" "$dracut_files/LICENSE"
 
 pushd "$void_packages" >/dev/null
 ./xbps-src binary-bootstrap

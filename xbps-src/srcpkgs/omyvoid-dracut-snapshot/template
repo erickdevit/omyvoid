@@ -2,13 +2,14 @@
 pkgname=omyvoid-dracut-snapshot
 version=0.1.0.dev.1
 revision=1
-archs=noarch
 depends="bash btrfs-progs dracut"
 short_desc="Omyvoid dracut module for temporary OverlayFS snapshot boots"
-maintainer="Erick Dev <erickdevit@users.noreply.github.com>"
+maintainer="Erick Bruno <erickwornex@gmail.com>"
 license="MIT"
+homepage="https://github.com/erickdevit/omyvoid"
 
 do_install() {
+  vlicense "${FILESDIR}/LICENSE"
   vinstall "${FILESDIR}/module-setup.sh" 0755 usr/lib/dracut/modules.d/95omyvoid-snapshot-overlay
   vinstall "${FILESDIR}/omyvoid-snapshot-overlay.sh" 0755 usr/lib/dracut/modules.d/95omyvoid-snapshot-overlay
 }

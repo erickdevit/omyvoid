@@ -126,6 +126,11 @@ for package in elephant omyvoid-limine-entry-tool omyvoid-limine-snapper-sync om
   [[ -f $ROOT/xbps-src/srcpkgs/$package/template ]] && ok "XBPS template exists: $package" || nok "XBPS template exists: $package"
   grep -Fq "$package" "$ROOT/release/build-xbps-repo.sh" && ok "XBPS repository builds: $package" || nok "XBPS repository builds: $package"
 done
+for package in omyvoid-dracut-snapshot omyvoid-limine-entry-tool omyvoid-limine-snapper-sync; do
+  assert_file_contains "XBPS package declares its homepage: $package" "$ROOT/xbps-src/srcpkgs/$package/template" '^homepage="https://github\.com/erickdevit/omyvoid"$'
+  assert_file_contains "XBPS package installs its MIT license: $package" "$ROOT/xbps-src/srcpkgs/$package/template" 'vlicense.*FILESDIR.*/LICENSE'
+done
+assert_file_contains 'XBPS build stages licenses for internal packages' "$ROOT/release/build-xbps-repo.sh" 'workspace/LICENSE'
 assert_file_contains 'Walker launches the packaged Elephant binary from PATH' "$ROOT/bin/omyvoid-launch-walker" 'setsid elephant'
 
 echo '# Supported optional applications'
