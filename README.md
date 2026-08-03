@@ -9,12 +9,6 @@ A identidade visual usa exclusivamente o símbolo reduzido do Void e o wordmark
 
 > Estado: `0.1.0-dev.1`. O código está em desenvolvimento; ainda não há uma release estável ou ISO indicada para máquinas de produção.
 
-O estado técnico auditado, as pendências visuais reservadas ao mantenedor e o
-bootstrap do repositório remoto estão documentados respectivamente em
-[CURRENT_STATUS.md](CURRENT_STATUS.md),
-[BRANDING_PENDING.md](BRANDING_PENDING.md) e
-[REMOTE_REPOSITORY_SETUP.md](REMOTE_REPOSITORY_SETUP.md).
-
 ## Arquitetura
 
 - Instalador TUI para apagar um disco ou instalar no espaço livre ao lado do Windows.

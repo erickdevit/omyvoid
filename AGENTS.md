@@ -143,6 +143,16 @@ fi
 - If an existing feature is broken, find and fix the root cause of why the Omarchy implementation is failing instead of rewriting it from scratch.
 - You must ask for permission from the user before reinventing or rewriting any script.
 
+# Documentation Scope
+
+- `README.md` is the project's main public document. Keep it concise, stable, and focused on users, contributors, architecture, installation, and supported public interfaces.
+- Never add temporary audits, implementation backlogs, agent handoff notes, internal readiness reports, maintainer-only tasks, or infrastructure bootstrap status to `README.md`.
+- Internal project tracking belongs in dedicated files referenced here instead of from `README.md`:
+  - `CURRENT_STATUS.md` - dated implementation and ISO-readiness audit.
+  - `BRANDING_PENDING.md` - maintainer-owned visual tasks; agents must not implement these without an explicit request.
+  - `REMOTE_REPOSITORY_SETUP.md` - operational GitHub, runner, XBPS, signing, and R2 bootstrap instructions.
+- Update internal tracking documents when their facts or decisions change, but do not expose links to them in the main public README unless the maintainer explicitly requests it.
+
 # Commits
 
 - Ao concluir uma rodada de desenvolvimento ou tarefa específica, faça o commit das alterações antes de finalizar o turno.
