@@ -1,0 +1,27 @@
+# Detect Surface devices which require additional modules for the keyboard to work.
+# Module list derived from Chris McLeod's manual install instructions
+# https://chrismcleod.dev/blog/installing-arch-linux-with-secure-boot-on-a-microsoft-surface-laptop-studio/
+if omybuntu-hw-surface; then
+  product_name="$(cat /sys/class/dmi/id/product_name 2>/dev/null)"
+  echo "Detected Surface Device"
+
+  # Modules already exist in the rootfs for the default kernel.
+  if [[ $product_name != "Surface Laptop 3" ]]; then
+    echo "Untested Surface Device: $product_name, additional modules may be required for your device."
+  fi
+
+  echo "Attempting to autodetect required pinctrl module"
+  pinctrl_module=$(lsmod | grep pinctrl_ | cut -f 1 -d" ")
+  if [[ -z $pinctrl_module ]]; then
+    echo "Failed to autodetect pinctrl module."
+  else
+    echo "Detected pinctrl module: $pinctrl_module"
+  fi
+
+  # Add modules to initramfs (Ubuntu uses initramfs-tools, not mkinitcpio)
+  for mod in ${pinctrl_module} surface_aggregator surface_aggregator_registry surface_aggregator_hub surface_hid_core surface_hid surface_kbd intel_lpss_pci 8250_dw; do
+    [[ -n $mod ]] && grep -qxF "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" | sudo tee -a /etc/initramfs-tools/modules > /dev/null
+  done
+  sudo update-initramfs -u
+
+fi

@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# omybuntu:summary=Set up hibernation with swap and boot resume configuration
+# omybuntu:requires-sudo=true
+# omybuntu:args=[--force] [--no-rebuild]
+
+source "${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}/default/i18n/init.sh"
+
+FORCE=false
+NO_REBUILD=false
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=true ;;
+    --no-rebuild) NO_REBUILD=true ;;
+  esac
+done
+
+if [[ ! -f /sys/power/image_size ]]; then
+  echo -e "$I18N_HIBERNATION_ERR_SUPPORT" >&2
+  exit 0
+fi
+
+# When --no-rebuild is set, the caller is responsible for the initramfs rebuild
+if ! $NO_REBUILD && ! command -v update-initramfs &>/dev/null; then
+  echo "$I18N_HIBERNATION_ERR_BOOTLOADER"
+  exit 0
+fi
+
+INITRAMFS_CONF="/etc/initramfs-tools/conf.d/resume"
+SWAP_FILE="/swap/swapfile"
+
+# Check if hibernation is already configured
+if [[ -f $INITRAMFS_CONF ]] && grep -q "^RESUME=" "$INITRAMFS_CONF"; then
+  # Fix empty resume_offset if btrfs map-swapfile failed during initial setup
+  if grep -q 'resume_offset="$' /etc/default/grub 2>/dev/null && [[ -f $SWAP_FILE ]]; then
+    RESUME_OFFSET=$(sudo btrfs inspect-internal map-swapfile -r "$SWAP_FILE" 2>/dev/null)
+    if [[ -n $RESUME_OFFSET ]]; then
+      fixing_msg=$(printf "$I18N_HIBERNATION_FIXING_OFFSET" "$RESUME_OFFSET")
+      echo "$fixing_msg"
+      sudo sed -i "s/resume_offset=\"$/resume_offset=$RESUME_OFFSET\"/" /etc/default/grub
+      $NO_REBUILD || sudo update-initramfs -u
+      $NO_REBUILD || sudo update-grub
+    fi
+  fi
+  echo "$I18N_HIBERNATION_ALREADY_SETUP"
+  exit 0
+fi
+
+if ! $FORCE; then
+  MEM_TOTAL_HUMAN=$(free --human | awk '/Mem/ {print $2}')
+  confirm_msg=$(printf "$I18N_HIBERNATION_SETUP_WARN" "$MEM_TOTAL_HUMAN")
+  if ! gum confirm "$confirm_msg"; then
+    exit 0
+  fi
+fi
+
+SWAP_SUBVOLUME="/swap"
+
+# Create btrfs subvolume for swap
+if ! sudo btrfs subvolume show "$SWAP_SUBVOLUME" &>/dev/null; then
+  echo "$I18N_HIBERNATION_CREATING_SUBVOLUME"
+  sudo btrfs subvolume create "$SWAP_SUBVOLUME"
+  sudo chattr +C "$SWAP_SUBVOLUME"
+fi
+
+# Create swapfile
+if ! sudo swaplabel "$SWAP_FILE" &>/dev/null; then
+  echo "$I18N_HIBERNATION_CREATING_SWAPFILE"
+  MEM_TOTAL_KB="$(awk '/MemTotal/ {print $2}' /proc/meminfo)k"
+  sudo btrfs filesystem mkswapfile -s "$MEM_TOTAL_KB" "$SWAP_FILE"
+fi
+
+# Add swapfile to fstab
+if ! grep -Fq "$SWAP_FILE" /etc/fstab; then
+  echo "$I18N_HIBERNATION_ADDING_FSTAB"
+  sudo cp -a /etc/fstab "/etc/fstab.$(date +%Y%m%d%H%M%S).back"
+  printf "\n# Btrfs swapfile for system hibernation\n%s none swap defaults,pri=0 0 0\n" "$SWAP_FILE" | sudo tee -a /etc/fstab >/dev/null
+fi
+
+# Enable swap
+if ! swapon --show | grep -q "$SWAP_FILE"; then
+  enabling_swap_msg=$(printf "$I18N_HIBERNATION_ENABLING_SWAP" "$SWAP_FILE")
+  echo "$enabling_swap_msg"
+  sudo swapon -p 0 "$SWAP_FILE"
+fi
+
+# Add resume config to initramfs-tools
+sudo mkdir -p /etc/initramfs-tools/conf.d
+adding_hook_msg=$(printf "$I18N_HIBERNATION_ADDING_HOOK" "$INITRAMFS_CONF")
+echo "$adding_hook_msg"
+
+# Ensure keyboard backlight doesn't prevent sleep
+sudo cp -p "$OMYBUNTU_PATH/default/systemd/system-sleep/keyboard-backlight" /usr/lib/systemd/system-sleep/
+
+# Add resume parameters to GRUB and initramfs
+echo "$I18N_HIBERNATION_ADDING_PARAMS"
+sudo swapon -p 0 "$SWAP_FILE" 2>/dev/null
+RESUME_UUID=$(findmnt -no UUID -T "$SWAP_FILE")
+RESUME_OFFSET=$(sudo btrfs inspect-internal map-swapfile -r "$SWAP_FILE")
+
+if [[ -n $RESUME_OFFSET && -n $RESUME_UUID ]]; then
+  # Write to initramfs config
+  echo "RESUME=UUID=$RESUME_UUID resume_offset=$RESUME_OFFSET" | sudo tee "$INITRAMFS_CONF" >/dev/null
+
+  # Add to GRUB_CMDLINE_LINUX_DEFAULT
+  if [[ -f /etc/default/grub ]]; then
+    current_cmdline=$(sed -nE 's/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"/\1/p' /etc/default/grub)
+    new_cmdline=$(echo "$current_cmdline" | sed -E 's/\b(resume|resume_offset)=[^ ]+//g' | sed -E 's/[ ]+/ /g' | sed 's/^ //;s/ $//')
+    new_cmdline="$new_cmdline resume=UUID=$RESUME_UUID resume_offset=$RESUME_OFFSET"
+    sudo sed -i -E 's/^(GRUB_CMDLINE_LINUX_DEFAULT=).*/\1"'"$new_cmdline"'"/' /etc/default/grub
+  fi
+else
+  offset_err_msg=$(printf "$I18N_HIBERNATION_ERR_OFFSET" "$SWAP_FILE")
+  echo "$offset_err_msg" >&2
+fi
+
+# Use ACPI alarm for RTC wakeup on s2idle systems (needed for suspend-then-hibernate)
+if grep -q "\[s2idle\]" /sys/power/mem_sleep 2>/dev/null; then
+  echo "$I18N_HIBERNATION_ENABLING_RTC"
+  if [[ -f /etc/default/grub ]] && ! grep -q "rtc_cmos.use_acpi_alarm=1" /etc/default/grub; then
+    current_cmdline=$(sed -nE 's/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"/\1/p' /etc/default/grub)
+    new_cmdline=$(echo "$current_cmdline" | sed 's/ $//')
+    new_cmdline="$new_cmdline rtc_cmos.use_acpi_alarm=1"
+    sudo sed -i -E 's/^(GRUB_CMDLINE_LINUX_DEFAULT=).*/\1"'"$new_cmdline"'"/' /etc/default/grub
+  fi
+fi
+
+if ! $NO_REBUILD; then
+  echo "$I18N_HIBERNATION_REGENERATING"
+  sudo update-initramfs -u -k all
+  sudo update-grub
+  echo
+fi
+
+if ! $FORCE && ! $NO_REBUILD && gum confirm "$I18N_HIBERNATION_REBOOT_WARN"; then
+  omybuntu-system-reboot
+fi

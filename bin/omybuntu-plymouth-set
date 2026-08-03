@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# omybuntu:summary=Set the Plymouth boot theme colors and logo
+# omybuntu:args=<background-hex> <text-hex> <path-to-logo.png>
+# omybuntu:examples=omybuntu plymouth set '#1d2021' '#ebdbb2' ~/.config/omybuntu/current/theme/plymouth/logo.png
+# omybuntu:requires-sudo=true
+
+# Configure the Plymouth boot theme with a custom background color, text color, and logo.
+# Stages the change in a temp dir, then commits the staged files to /usr/share and
+# rebuilds the initramfs. Also syncs the SDDM login screen (the post-logout
+# screen) with the same colors and logo so boot/login stay visually unified.
+
+if [[ $# -ne 3 ]]; then
+  echo "Usage: omybuntu-plymouth-set <background-hex> <text-hex> <path-to-logo.png>" >&2
+  exit 1
+fi
+
+OMYBUNTU_PATH="${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}"
+
+bg_hex="${1#\#}"
+text_hex="${2#\#}"
+logo_path="$3"
+
+if ! [[ $bg_hex =~ ^[0-9a-fA-F]{6}$ ]]; then
+  echo "Invalid background color: $1 (expected #RRGGBB)" >&2
+  exit 1
+fi
+
+if ! [[ $text_hex =~ ^[0-9a-fA-F]{6}$ ]]; then
+  echo "Invalid text color: $2 (expected #RRGGBB)" >&2
+  exit 1
+fi
+
+if [[ ! -f $logo_path ]]; then
+  echo "Logo file not found: $logo_path" >&2
+  exit 1
+fi
+
+bg_r=$(awk -v n=$((16#${bg_hex:0:2})) 'BEGIN{printf "%.3f", n/255}')
+bg_g=$(awk -v n=$((16#${bg_hex:2:2})) 'BEGIN{printf "%.3f", n/255}')
+bg_b=$(awk -v n=$((16#${bg_hex:4:2})) 'BEGIN{printf "%.3f", n/255}')
+
+theme_dir="/usr/share/plymouth/themes/omybuntu"
+staging_dir=$(mktemp -d)
+trap 'rm -rf "$staging_dir"' EXIT
+
+find "$OMYBUNTU_PATH/default/plymouth" -maxdepth 1 -type f -exec cp -t "$staging_dir/" {} +
+cp "$logo_path" "$staging_dir/logo.png"
+magick "$OMYBUNTU_PATH/icon.png" -bordercolor none -border 40x40 "$staging_dir/spinner.png"
+
+sed -i \
+  -e "s/^Window.SetBackgroundTopColor.*/Window.SetBackgroundTopColor($bg_r, $bg_g, $bg_b);/" \
+  -e "s/^Window.SetBackgroundBottomColor.*/Window.SetBackgroundBottomColor($bg_r, $bg_g, $bg_b);/" \
+  "$staging_dir/omybuntu.script"
+
+for asset in bullet.png entry.png lock.png; do
+  magick "$staging_dir/$asset" -channel RGB +level-colors "#$text_hex","#$text_hex" "$staging_dir/$asset"
+done
+
+sudo rm -rf "$theme_dir"
+sudo mkdir -p "$theme_dir"
+sudo cp -a "$staging_dir/." "$theme_dir/"
+sudo chown -R root:root "$theme_dir"
+sudo find "$theme_dir" -type d -exec chmod 0755 {} +
+sudo find "$theme_dir" -type f -exec chmod 0644 {} +
+if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+  sudo plymouth-set-default-theme omybuntu
+fi
+if command -v update-alternatives >/dev/null 2>&1; then
+  sudo update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/omybuntu/omybuntu.plymouth 150 2>/dev/null || true
+  sudo update-alternatives --set default.plymouth /usr/share/plymouth/themes/omybuntu/omybuntu.plymouth 2>/dev/null || true
+fi
+
+if command -v update-initramfs >/dev/null 2>&1; then
+  sudo update-initramfs -u
+fi
+
+# Sync the SDDM login screen with the same colors and logo.
+sddm_dir="/usr/share/sddm/themes/omybuntu"
+sddm_template="$OMYBUNTU_PATH/default/sddm/omybuntu/Main.qml"
+
+sed \
+  -e "s/#140a05/#$bg_hex/g" \
+  -e "s/#f5e6d3/#$text_hex/g" \
+  "$sddm_template" | sudo tee "$sddm_dir/Main.qml" >/dev/null
+
+sudo cp "$logo_path" "$sddm_dir/logo.png"
+for asset in bullet.png entry.png lock.png; do
+  sudo cp "$staging_dir/$asset" "$sddm_dir/$asset"
+done
+for asset in entry lock; do
+  magick "$staging_dir/$asset.png" -channel RGB +level-colors "#ef4444","#ef4444" "$staging_dir/$asset-failed.png"
+  sudo cp "$staging_dir/$asset-failed.png" "$sddm_dir/$asset-failed.png"
+done
+sudo rm -f "$sddm_dir/logo.svg"
+sudo chown -R root:root "$sddm_dir"
+sudo find "$sddm_dir" -type d -exec chmod 0755 {} +
+sudo find "$sddm_dir" -type f -exec chmod 0644 {} +

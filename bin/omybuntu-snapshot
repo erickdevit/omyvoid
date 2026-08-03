@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# omybuntu:summary=Create or restore system snapshots with timeshift
+# omybuntu:args=<create|restore>
+# omybuntu:requires-sudo=true
+
+set -e
+
+COMMAND="$1"
+OMYBUNTU_PATH=${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}
+
+if [[ -z $COMMAND ]]; then
+  echo "Usage: omybuntu-snapshot <create|restore>" >&2
+  exit 1
+fi
+
+if ! command -v timeshift &>/dev/null; then
+  exit 127 # omybuntu-update can use this to just ignore if timeshift is not available
+fi
+
+case "$COMMAND" in
+create)
+  DESC="$(omybuntu-version)"
+
+  echo -e "\e[32mCreate system snapshot\e[0m"
+  
+  sudo timeshift --create --comments "$DESC"
+  echo
+  ;;
+restore)
+  echo -e "\e[32mRestore system snapshot\e[0m"
+  sudo timeshift --restore
+  ;;
+esac

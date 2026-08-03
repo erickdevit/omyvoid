@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omybuntu:summary=Print when system packages were last upgraded
+
+date -d "@$(stat -c %Y /var/lib/dpkg/status)" "+%A, %B %d %Y at %H:%M"

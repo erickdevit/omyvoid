@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# omybuntu:summary=Restart Walker and related user services
+
+if [[ "$1" == "--only-if-updated" ]]; then
+  was_updated=false
+  for bin in /usr/bin/walker /usr/bin/elephant /usr/local/bin/walker /usr/local/bin/elephant; do
+    if [[ -f "$bin" ]]; then
+      mtime=$(stat -c '%Y' "$bin" 2>/dev/null || echo 0)
+      now=$(date +%s)
+      if (( now - mtime < 120 )); then
+        was_updated=true
+        break
+      fi
+    fi
+  done
+  if ! $was_updated; then
+    exit 0
+  fi
+fi
+
+restart_services() {
+  if systemctl --user is-enabled elephant.service &>/dev/null; then
+    systemctl --user restart elephant.service
+  fi
+
+  if systemctl --user cat app-walker@autostart.service &>/dev/null; then
+    systemctl --user restart app-walker@autostart.service
+  elif [[ -x $HOME/.local/bin/walker ]] && command -v uwsm-app &>/dev/null; then
+    walker_pids=()
+    while IFS= read -r pid; do
+      process_command=$(ps -p "$pid" -o args= 2>/dev/null || true)
+      [[ $process_command == "$HOME/.local/bin/walker --gapplication-service" ]] && walker_pids+=("$pid")
+    done < <(pgrep -x walker 2>/dev/null || true)
+
+    if (( ${#walker_pids[@]} )); then
+      kill "${walker_pids[@]}" 2>/dev/null || true
+    fi
+
+    for (( attempt = 0; attempt < 20; attempt++ )); do
+      walker_running=false
+      for pid in "${walker_pids[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+          walker_running=true
+          break
+        fi
+      done
+      $walker_running || break
+      sleep 0.1
+    done
+
+    setsid uwsm-app -- env GSK_RENDERER=cairo "$HOME/.local/bin/walker" --gapplication-service &>/dev/null &
+  else
+    echo -e "\e[31mUnable to restart Walker -- RESTART MANUALLY\e[0m"
+  fi
+}
+
+if (( EUID == 0 )); then
+  SCRIPT_OWNER=$(stat -c '%U' "$0")
+  USER_UID=$(id -u "$SCRIPT_OWNER")
+  systemd-run --uid="$SCRIPT_OWNER" --setenv=XDG_RUNTIME_DIR="/run/user/$USER_UID" \
+    bash -c "$(declare -f restart_services); restart_services"
+else
+  restart_services
+fi

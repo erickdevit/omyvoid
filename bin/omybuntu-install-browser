@@ -1,0 +1,155 @@
+#!/bin/bash
+
+# omybuntu:summary=Install a supported browser
+# omybuntu:args=<chrome|brave|brave-origin|edge|firefox|zen>
+# omybuntu:examples=omybuntu install browser firefox | omybuntu install browser brave
+
+set -euo pipefail
+trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
+trap 'echo -e "\n❌ Cancelled by user." >&2; exit 130' INT
+
+setup_policy_directory() {
+  sudo mkdir -p "$1"
+  sudo chmod a+rw "$1"
+}
+
+announce_browser_installed() {
+  echo ""
+  echo "✅ Success: $1 browser installed. Make it the default via Setup > Defaults > Browser."
+}
+
+copy_chromium_flags() {
+  mkdir -p ~/.config
+  cp -f "${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}/config/chromium-flags.conf" "$1"
+}
+
+patch_desktop_file() {
+  local desktop_name="$1"
+  local flags_file="$2"
+
+  local src_desktop="/usr/share/applications/$desktop_name"
+  local dest_desktop="$HOME/.local/share/applications/$desktop_name"
+
+  if [[ -f $src_desktop ]]; then
+    mkdir -p "$HOME/.local/share/applications"
+    cp -f "$src_desktop" "$dest_desktop"
+
+    if [[ -f $flags_file ]]; then
+      local flags
+      flags=$(grep -v '^\s*#' "$flags_file" | grep -v '^\s*$' | sed "s|~|$HOME|g" | xargs)
+      if [[ -n $flags ]]; then
+        sed -i -E "s|^(Exec=[^ ]+)(.*)|\1 $flags\2|" "$dest_desktop"
+      fi
+    fi
+  fi
+}
+
+setup_firefox_preferences() {
+  local distribution_dir="$1"
+
+  setup_policy_directory "$distribution_dir"
+  sudo cp -f "$OMYBUNTU_PATH/default/firefox/policies.json" "$distribution_dir/policies.json"
+}
+
+setup_firefox_wayland() {
+  mkdir -p ~/.config/environment.d
+  echo "MOZ_ENABLE_WAYLAND=1" > ~/.config/environment.d/omybuntu-firefox-wayland.conf
+}
+
+case $1 in
+chrome)
+  echo "Installing Chrome..."
+  wget -q -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+  sudo apt-get install -y /tmp/google-chrome-stable_current_amd64.deb
+  rm -f /tmp/google-chrome-stable_current_amd64.deb
+
+  setup_policy_directory /etc/opt/chrome/policies/managed
+  copy_chromium_flags ~/.config/chrome-flags.conf
+  patch_desktop_file google-chrome.desktop ~/.config/chrome-flags.conf
+  omybuntu-theme-set-browser
+  announce_browser_installed "Chrome"
+  ;;
+edge)
+  echo "Installing Edge..."
+  sudo curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg
+  echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-edge.gpg] https://packages.microsoft.com/repos/edge stable main" | sudo tee /etc/apt/sources.list.d/microsoft-edge.list
+  sudo apt-get update
+  sudo apt-get install -y microsoft-edge-stable
+
+  setup_policy_directory /etc/opt/edge/policies/managed
+  copy_chromium_flags ~/.config/microsoft-edge-stable-flags.conf
+  patch_desktop_file microsoft-edge.desktop ~/.config/microsoft-edge-stable-flags.conf
+  omybuntu-theme-set-browser
+  announce_browser_installed "Edge"
+  ;;
+brave)
+  echo "Installing Brave..."
+  sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
+  sudo apt-get update
+  sudo apt-get install -y brave-browser
+
+  setup_policy_directory /etc/brave/policies/managed
+  copy_chromium_flags ~/.config/brave-flags.conf
+  patch_desktop_file brave-browser.desktop ~/.config/brave-flags.conf
+  omybuntu-theme-set-browser
+  announce_browser_installed "Brave"
+  ;;
+brave-origin)
+  echo "Installing Brave Origin..."
+  sudo curl -fsSLo /usr/share/keyrings/brave-browser-beta-archive-keyring.gpg https://brave-browser-apt-beta.s3.brave.com/brave-browser-beta-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/brave-browser-beta-archive-keyring.gpg] https://brave-browser-apt-beta.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-beta-release.list
+  sudo apt-get update
+  sudo apt-get install -y brave-browser-beta
+
+  setup_policy_directory /etc/brave/policies/managed
+  mkdir -p ~/.config
+  # FIXME: Use normal chromium flags when Brave Origin wrapper has been fixed
+  echo -e "--load-extension=~/.local/share/omybuntu/default/chromium/extensions/copy-url\n--password-store=gnome-libsecret" > ~/.config/brave-origin-beta-flags.conf
+  patch_desktop_file brave-browser-beta.desktop ~/.config/brave-origin-beta-flags.conf
+  omybuntu-theme-set-browser
+  announce_browser_installed "Brave Origin"
+  ;;
+firefox)
+  echo "Installing Firefox..."
+  omybuntu-pkg-add firefox
+
+  setup_firefox_preferences /usr/lib/firefox/distribution
+  setup_firefox_wayland
+  announce_browser_installed "Firefox"
+  ;;
+zen)
+  echo "Installing Zen..."
+  wget -q -O /tmp/zen.tar.xz https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz
+  sudo mkdir -p /opt
+  sudo tar -xf /tmp/zen.tar.xz -C /opt/
+  if [[ -d /opt/zen ]]; then
+    sudo rm -rf /opt/zen-browser
+    sudo mv /opt/zen /opt/zen-browser
+  fi
+  sudo ln -sf /opt/zen-browser/zen /usr/local/bin/zen-browser
+  
+  cat << 'EOF' | sudo tee /usr/share/applications/zen.desktop > /dev/null
+[Desktop Entry]
+Name=Zen Browser
+Exec=/opt/zen-browser/zen %u
+Icon=/opt/zen-browser/browser/chrome/icons/default/default128.png
+Type=Application
+Categories=Network;WebBrowser;
+Terminal=false
+StartupNotify=true
+EOF
+
+  rm -f /tmp/zen.tar.xz
+
+  test -f /usr/local/bin/zen-browser
+
+  setup_firefox_preferences /opt/zen-browser/distribution
+  setup_firefox_wayland
+  announce_browser_installed "Zen"
+  ;;
+*)
+  echo "Usage: omybuntu-install-browser <chrome|brave|brave-origin|edge|firefox|zen>"
+  exit 1
+  ;;
+esac

@@ -1,0 +1,7 @@
+build/
+ubuntu-base.tar.gz
+*.iso
+.iso-cache/
+installer/target/
+build*.log
+wget-log

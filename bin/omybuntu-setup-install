@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# omybuntu:summary=Omybuntu system installer (TUI wizard)
+# omybuntu:group=setup
+# omybuntu:requires-sudo=true
+
+OMYBUNTU_PATH="$(dirname "$(dirname "$(readlink -f "$0")")")"
+
+if [[ -x /usr/local/bin/omybuntu-installer ]]; then
+  exec sudo /usr/local/bin/omybuntu-installer "$@"
+fi
+
+# Fallback: run install.sh (configures existing Ubuntu system)
+exec sudo bash "$OMYBUNTU_PATH/install.sh"

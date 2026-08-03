@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# omybuntu:summary=Remove hibernation setup including swap and boot resume settings
+# omybuntu:requires-sudo=true
+
+INITRAMFS_CONF="/etc/initramfs-tools/conf.d/resume"
+
+source "${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}/default/i18n/init.sh"
+
+# Check if hibernation is configured
+if [[ ! -f $INITRAMFS_CONF ]] || ! grep -q "^RESUME=" "$INITRAMFS_CONF"; then
+  echo "$I18N_HIBERNATION_NOT_SETUP"
+  exit 0
+fi
+
+if ! gum confirm "$I18N_HIBERNATION_REMOVE_WARN"; then
+  exit 0
+fi
+
+SWAP_SUBVOLUME="/swap"
+SWAP_FILE="$SWAP_SUBVOLUME/swapfile"
+
+# Disable swap if active
+if swapon --show | grep -q "$SWAP_FILE"; then
+  disabling_swap_msg=$(printf "$I18N_HIBERNATION_DISABLING_SWAP" "$SWAP_FILE")
+  echo "$disabling_swap_msg"
+  sudo swapoff "$SWAP_FILE"
+fi
+
+# Remove swapfile
+if [[ -f $SWAP_FILE ]]; then
+  echo "$I18N_HIBERNATION_REMOVING_SWAPFILE"
+  sudo rm "$SWAP_FILE"
+fi
+
+# Remove swap subvolume
+if sudo btrfs subvolume show "$SWAP_SUBVOLUME" &>/dev/null; then
+  removing_sub_msg=$(printf "$I18N_HIBERNATION_REMOVING_SUBVOLUME" "$SWAP_SUBVOLUME")
+  echo "$removing_sub_msg"
+  sudo btrfs subvolume delete "$SWAP_SUBVOLUME"
+fi
+
+# Remove fstab entry
+if grep -Fq "$SWAP_FILE" /etc/fstab; then
+  echo "$I18N_HIBERNATION_REMOVING_FSTAB"
+  sudo cp -a /etc/fstab "/etc/fstab.$(date +%Y%m%d%H%M%S).back"
+  sudo sed -i "\|$SWAP_FILE|d" /etc/fstab
+  sudo sed -i '/^# Btrfs swapfile for system hibernation$/d' /etc/fstab
+fi
+
+# Remove initramfs config and GRUB kernel parameters
+echo "$I18N_HIBERNATION_REMOVING_HOOK"
+sudo rm -f "$INITRAMFS_CONF"
+
+if [[ -f /etc/default/grub ]]; then
+  current_cmdline=$(sed -nE 's/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"/\1/p' /etc/default/grub)
+  new_cmdline=$(echo "$current_cmdline" | sed -E 's/\b(resume|resume_offset|rtc_cmos.use_acpi_alarm)=[^ ]+//g' | sed -E 's/[ ]+/ /g' | sed 's/^ //;s/ $//')
+  sudo sed -i -E 's/^(GRUB_CMDLINE_LINUX_DEFAULT=).*/\1"'"$new_cmdline"'"/' /etc/default/grub
+fi
+
+echo "$I18N_HIBERNATION_REGENERATING"
+sudo update-initramfs -u -k all
+sudo update-grub
+
+echo "$I18N_HIBERNATION_REMOVED"
