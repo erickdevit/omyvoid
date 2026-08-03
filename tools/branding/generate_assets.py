@@ -234,10 +234,6 @@ def generate_theme_assets() -> None:
         if theme_dir.name != "omyvoid":
             background = branded_background(palette["background"], palette["accent"])
             save_png(background, theme_dir / "backgrounds" / "omyvoid.png")
-            save_png(
-                ImageOps.fit(background, (1800, 1012), method=Image.Resampling.LANCZOS),
-                theme_dir / "preview.png",
-            )
             background_text = branded_background_text(palette["background"], palette["foreground"])
             save_png(background_text, theme_dir / "backgrounds" / "omyvoid-text.png")
         save_png(render_wordmark(800, 188, palette["foreground"]), theme_dir / "unlock.png")
@@ -260,10 +256,6 @@ def generate_primary_wallpapers() -> None:
     composite_mark(minimal_icon, size=500, position=(1670, 830), color=OSAKA["accent"], alpha=230, glow=0)
     save_png(minimal_icon, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoid.png")
     save_png(minimal_icon, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoid-icon.png")
-    save_png(
-        ImageOps.fit(minimal_icon, (1800, 1012), method=Image.Resampling.LANCZOS),
-        ROOT / "themes" / "omyvoid" / "preview.png",
-    )
 
     minimal_text = source_wallpaper("minimal-osaka-jade.png")
     wordmark = render_wordmark(2200, 520, OSAKA["foreground"])
