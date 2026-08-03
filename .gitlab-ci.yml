@@ -18,10 +18,11 @@ variables:
 
 validate:
   stage: validate
-  image: ghcr.io/void-linux/void-glibc-full:latest
+  image:
+    name: ghcr.io/void-linux/void-glibc-full:latest
+    entrypoint: ["/usr/bin/dash", "-c", "xbps-install -Sy bash ca-certificates git >/dev/null 2>&1 && ln -sf /usr/bin/bash /bin/bash && exec /usr/bin/bash \"$@\"", "bash"]
   timeout: 45m
   before_script:
-    - xbps-install -Sy bash ca-certificates git
     - release/ci-prepare-void.sh test
   script:
     - test/ci.sh
