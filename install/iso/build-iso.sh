@@ -11,6 +11,7 @@ image_dir="$build_dir/image"
 repository_dir="$build_dir/repository"
 efi_image="$image_dir/boot/limine-uefi.img"
 repository_args=(
+  -r https://repo-default.voidlinux.org/current
   -r https://repo-default.voidlinux.org/current/nonfree
   -r https://repo-default.voidlinux.org/current/multilib
   -r https://repo-default.voidlinux.org/current/multilib/nonfree
