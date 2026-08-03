@@ -141,6 +141,30 @@ def composite_mark(
 
 
 def render_wordmark(width: int, height: int, color: str) -> Image.Image:
+    ascii_img_path = ROOT / "omyvoid-ascii-art-text.png"
+    if ascii_img_path.exists():
+        with Image.open(ascii_img_path) as img:
+            source = img.convert("L")
+            bbox = source.getbbox()
+            if bbox:
+                source = source.crop(bbox)
+            mask = source.point(lambda p: 0 if p < 30 else int(min(255, (p - 30) * 255 / 225)))
+            aspect = mask.width / mask.height
+            target_h = int(width / aspect)
+            if target_h > height:
+                target_h = height
+                target_w = int(height * aspect)
+            else:
+                target_w = width
+            scaled_mask = mask.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            result = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            colored = Image.new("RGBA", (target_w, target_h), rgba(color))
+            colored.putalpha(scaled_mask)
+            pos_x = (width - target_w) // 2
+            pos_y = (height - target_h) // 2
+            result.alpha_composite(colored, (pos_x, pos_y))
+            return result
+
     text = "OMYVOID"
     columns = len(text) * 5 + len(text) - 1
     cell = max(1, min((width - 48) // columns, (height - 32) // 7))
