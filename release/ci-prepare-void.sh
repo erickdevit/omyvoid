@@ -6,28 +6,30 @@ profile=${1:-test}
 packages=(bash cargo curl git jq python3 python3-yaml ripgrep shellcheck xtools)
 required_commands=(bash cargo curl git jq python3 rg shellcheck xbps-query xlint)
 required_packages=()
-install_dependencies=false
 
 case "$profile" in
   test)
-    install_dependencies=true
     ;;
   packages)
     required_commands+=(xbps-rindex)
+    packages+=(base-devel)
     required_packages+=(base-devel)
     ;;
   builder)
     required_commands+=(
-      gh
-      glab
       mcopy
       mformat
-      minisign
-      rclone
       rsync
-      sudo
       xbps-install
       xbps-rindex
+      xorriso
+    )
+    packages+=(
+      base-devel
+      limine
+      mtools
+      rclone
+      rsync
       xorriso
     )
     required_packages+=(
@@ -41,7 +43,7 @@ case "$profile" in
     ;;
 esac
 
-[[ -f /etc/os-release ]] && grep -Eq '^ID="?void"?$' /etc/os-release || {
+[[ -f /etc/os-release ]] && grep -Eq '^ID=void$|^ID="void"$' /etc/os-release || {
   echo "The CI runner must use Void Linux" >&2
   exit 1
 }
@@ -54,21 +56,39 @@ getconf GNU_LIBC_VERSION >/dev/null 2>&1 || {
   exit 1
 }
 
-if [[ $install_dependencies == true ]]; then
+# Determine if any command or package is missing, and automatically install
+missing_deps=false
+for command in "${required_commands[@]}"; do
+  if ! command -v "$command" >/dev/null 2>&1; then
+    missing_deps=true
+    break
+  fi
+done
+
+if [[ $missing_deps == false ]]; then
+  for package in "${required_packages[@]}"; do
+    if ! xbps-query "$package" >/dev/null 2>&1; then
+      missing_deps=true
+      break
+    fi
+  done
+fi
+
+if [[ $missing_deps == true || ${OMYVOID_FORCE_INSTALL_DEPS:-true} == true ]]; then
   xbps=(xbps-install)
   if (( EUID != 0 )); then
-    command -v sudo >/dev/null || {
+    command -v sudo >/dev/null 2>&1 || {
       echo "A non-root validation runner requires sudo" >&2
       exit 1
     }
-    sudo -n true || {
+    sudo -n true 2>/dev/null || {
       echo "The validation runner requires non-interactive sudo for setup" >&2
       exit 1
     }
     xbps=(sudo -n xbps-install)
   fi
 
-  "${xbps[@]}" -Syu xbps
+  "${xbps[@]}" -Syu xbps || true
   "${xbps[@]}" -Sy "${packages[@]}"
 fi
 
