@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# omyvoid:summary=Reboot after closing application windows
+# omyvoid:examples=omyvoid reboot | omyvoid system reboot
+# omyvoid:aliases=omyvoid reboot
+
+omyvoid-state clear re*-required
+
+# Schedule the reboot to happen after closing windows (detached from terminal)
+nohup bash -c "sleep 2 && loginctl reboot" >/dev/null 2>&1 &
+
+# Now close all windows
+omyvoid-hyprland-window-close-all
+sleep 1 # Allow apps like Chrome to shutdown correctly

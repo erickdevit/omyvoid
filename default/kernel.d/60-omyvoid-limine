@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e
+
+if command -v omyvoid-boot-refresh >/dev/null 2>&1; then
+  exec omyvoid-boot-refresh
+fi
+
+if [[ -x /opt/omyvoid/bin/omyvoid-boot-refresh ]]; then
+  exec /opt/omyvoid/bin/omyvoid-boot-refresh
+fi
+
+exit 0

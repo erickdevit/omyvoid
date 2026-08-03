@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=Install NordVPN through an approved restricted XBPS template
+
+set -euo pipefail
+omyvoid-pkg-restricted-install nordvpn
+if [[ -d /etc/sv/nordvpnd ]]; then
+  sudo ln -snf /etc/sv/nordvpnd /var/service/nordvpnd
+  sudo sv up nordvpnd
+fi
+sudo usermod -aG nordvpn "$USER"

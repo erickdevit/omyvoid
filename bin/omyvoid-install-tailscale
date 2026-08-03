@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=Install and enable the Tailscale runit service
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+omyvoid-pkg-add tailscale
+sudo ln -snf /etc/sv/tailscaled /var/service/tailscaled
+sudo sv up tailscaled
+sudo tailscale up --accept-routes
+omyvoid-webapp-install "Tailscale" "https://login.tailscale.com/admin/machines" https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/tailscale-light.png

@@ -1,3 +1,3 @@
-if omybuntu-hw-asus-rog; then
-  omybuntu-pkg-add asusctl
+if omyvoid-hw-asus-rog; then
+  omyvoid-pkg-add asusctl
 fi

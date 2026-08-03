@@ -1,0 +1,21 @@
+# Template file for 'omyvoid-limine-entry-tool'
+pkgname=omyvoid-limine-entry-tool
+version=0.1.0.dev.1
+revision=1
+archs=noarch
+depends="bash coreutils dracut dracut-uefi efibootmgr limine ukify util-linux"
+short_desc="Omyvoid Limine menu, UKI and kernel hook integration"
+maintainer="Erick Dev <erickdevit@users.noreply.github.com>"
+license="MIT"
+
+do_install() {
+  local command
+  for command in omyvoid-boot-refresh omyvoid-boot-repair omyvoid-boot-cmdline-add \
+    omyvoid-boot-cmdline-remove omyvoid-boot-snapshot-build omyvoid-uki-build; do
+    vbin "${FILESDIR}/${command}"
+  done
+  vinstall "${FILESDIR}/60-omyvoid-limine" 0755 etc/kernel.d/post-install
+  vinstall "${FILESDIR}/60-omyvoid-limine" 0755 etc/kernel.d/post-remove
+  vinstall "${FILESDIR}/limine.conf" 0644 usr/share/omyvoid/limine
+  vinstall "${FILESDIR}/omyvoid-boot.png" 0644 usr/share/omyvoid/limine
+}

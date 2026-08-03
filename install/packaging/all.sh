@@ -1,19 +1,10 @@
-run_logged $OMYBUNTU_INSTALL/packaging/base.sh
-if [[ -z ${OMYBUNTU_ISO_BUILD:-} ]]; then
-  run_logged $OMYBUNTU_INSTALL/packaging/ghostty.sh
-fi
-run_logged $OMYBUNTU_INSTALL/packaging/chrome.sh
-run_logged $OMYBUNTU_INSTALL/packaging/grub-btrfs.sh
-run_logged $OMYBUNTU_INSTALL/packaging/fonts.sh
-run_logged $OMYBUNTU_INSTALL/packaging/nvim.sh
-run_logged $OMYBUNTU_INSTALL/packaging/icons.sh
-run_logged $OMYBUNTU_INSTALL/packaging/webapps.sh
-run_logged $OMYBUNTU_INSTALL/packaging/tuis.sh
-run_logged $OMYBUNTU_INSTALL/packaging/npm.sh
-run_logged $OMYBUNTU_INSTALL/ubuntu-tuis-and-walker.sh
-run_logged $OMYBUNTU_INSTALL/build-quickshell.sh
-run_logged $OMYBUNTU_INSTALL/packaging/third-party.sh
-run_logged $OMYBUNTU_INSTALL/packaging/asus-rog.sh
-run_logged $OMYBUNTU_INSTALL/packaging/framework16.sh
-run_logged $OMYBUNTU_INSTALL/packaging/dell-xps-touchpad-haptics.sh
-run_logged $OMYBUNTU_INSTALL/packaging/surface.sh
+run_logged $OMYVOID_INSTALL/packaging/base.sh
+run_logged $OMYVOID_INSTALL/packaging/fonts.sh
+run_logged $OMYVOID_INSTALL/packaging/nvim.sh
+run_logged $OMYVOID_INSTALL/packaging/icons.sh
+run_logged $OMYVOID_INSTALL/packaging/webapps.sh
+run_logged $OMYVOID_INSTALL/packaging/tuis.sh
+run_logged $OMYVOID_INSTALL/packaging/asus-rog.sh
+run_logged $OMYVOID_INSTALL/packaging/framework16.sh
+run_logged $OMYVOID_INSTALL/packaging/dell-xps-touchpad-haptics.sh
+run_logged $OMYVOID_INSTALL/packaging/surface.sh

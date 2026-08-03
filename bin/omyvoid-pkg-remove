@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# omyvoid:summary=Show a fuzzy-finder TUI for picking packages installed on the system to be removed.
+# omyvoid:requires-sudo=true
+
+fzf_args=(
+  --multi
+  --preview 'xbps-query -RS {1} 2>/dev/null || xbps-query {1} 2>/dev/null || echo "No preview available"'
+  --preview-label='alt-p: toggle description, alt-j/k: scroll, tab: multi-select'
+  --preview-label-pos='bottom'
+  --preview-window 'down:65%:wrap'
+  --bind 'alt-p:toggle-preview'
+  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
+  --bind 'alt-k:preview-up,alt-j:preview-down'
+  --color 'pointer:red,marker:red'
+)
+
+pkg_names=$(xbps-query -m | awk '{print $1}' | sed 's/-[0-9][^-]*_[0-9][0-9]*$//' | sort -u | fzf "${fzf_args[@]}")
+
+if [[ -n $pkg_names ]]; then
+  # Convert newline-separated selections to space-separated and pass to our drop helper
+  echo "$pkg_names" | xargs omyvoid-pkg-drop
+  omyvoid-show-done
+fi

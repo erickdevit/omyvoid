@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite the user config for hyprlock with the Omyvoid default.
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+omyvoid-refresh-config hypr/hyprlock.conf
+
+if [[ -f ~/.config/hypr/hyprlock.conf ]]; then
+  if grep -q "fingerprint:enabled = true" ~/.config/hypr/hyprlock.conf 2>/dev/null; then
+    placeholder="<span> $I18N_HYPRLOCK_PLACEHOLDER 󰈷 </span>"
+  else
+    placeholder="$I18N_HYPRLOCK_PLACEHOLDER"
+  fi
+  sed -i "s/placeholder_text = .*/placeholder_text = ${placeholder//\//\\/}/" ~/.config/hypr/hyprlock.conf
+fi

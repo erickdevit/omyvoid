@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=List available monospace fonts
+# omyvoid:examples=omyvoid font list | omyvoid font set "CaskaydiaMono Nerd Font"
+
+fc-list :spacing=100 -f "%{family[0]}\n" | grep -v -i -E 'emoji|signwriting|omyvoid' | sort -u

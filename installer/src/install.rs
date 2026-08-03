@@ -1,1010 +1,852 @@
+use std::fs;
+use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::io::{BufRead, BufReader, Write, Seek, SeekFrom};
-use crate::storage::{StoragePlan, validate_alongside_plan};
+use std::time::{Duration, Instant};
 
-// ─── Messages ─────────────────────────────────────────────────────────────────
+use crate::storage::{validate_alongside_plan, StoragePlan};
+
+const TARGET: &str = "/mnt";
+const MAIN_REPOSITORY: &str = "https://repo-default.voidlinux.org/current";
+const BLACKHOLE_REPOSITORY: &str = "https://mirror.black-hole.dev/x86_64";
+const OMYVOID_REPOSITORY: &str = "https://packages.omyvoid.org/current";
+const ESP_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
 #[derive(Debug)]
 pub enum InstallMessage {
-  Progress { percent: u16, message: String },
-  Error(String),
-  Done,
+    Progress { percent: u16, message: String },
+    Error(String),
+    Done,
 }
-
-// ─── Config ───────────────────────────────────────────────────────────────────
 
 #[derive(Clone)]
 pub struct InstallConfig {
-  pub storage:       StoragePlan,
-  pub encrypt:       bool,
-  pub luks_pass:     String,
-  pub hostname:      String,
-  pub username:      String,
-  pub password:      String,
-  pub root_password: String,
-  pub language:      String,
-  pub locale:        String,
-  pub keymap:        String,
-  pub timezone:      String,
-  pub offline:       bool,
-  pub mok_password:  String,
+    pub storage: StoragePlan,
+    pub encrypt: bool,
+    pub luks_pass: String,
+    pub hostname: String,
+    pub username: String,
+    pub password: String,
+    pub root_password: String,
+    pub language: String,
+    pub locale: String,
+    pub keymap: String,
+    pub timezone: String,
+    pub offline: bool,
 }
 
 impl std::fmt::Debug for InstallConfig {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("InstallConfig")
-      .field("storage", &self.storage)
-      .field("encrypt", &self.encrypt)
-      .field("hostname", &self.hostname)
-      .field("username", &self.username)
-      .field("language", &self.language)
-      .field("locale", &self.locale)
-      .field("keymap", &self.keymap)
-      .field("timezone", &self.timezone)
-      .field("offline", &self.offline)
-      .field("password", &"[REDACTED]")
-      .field("root_password", &"[REDACTED]")
-      .field("luks_pass", &"[REDACTED]")
-      .field("mok_password", &"[REDACTED]")
-      .finish()
-  }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InstallConfig")
+            .field("storage", &self.storage)
+            .field("encrypt", &self.encrypt)
+            .field("hostname", &self.hostname)
+            .field("username", &self.username)
+            .field("language", &self.language)
+            .field("locale", &self.locale)
+            .field("keymap", &self.keymap)
+            .field("timezone", &self.timezone)
+            .field("offline", &self.offline)
+            .field("password", &"[REDACTED]")
+            .field("root_password", &"[REDACTED]")
+            .field("luks_pass", &"[REDACTED]")
+            .finish()
+    }
 }
-
-const UBUNTU_CODENAME: &str = "resolute"; // 26.04
-const UBUNTU_MIRROR: &str   = "http://archive.ubuntu.com/ubuntu/";
-
-// ─── Public entry point ───────────────────────────────────────────────────────
 
 pub fn spawn_install(config: InstallConfig) -> Receiver<InstallMessage> {
-  let (tx, rx) = mpsc::channel();
-  thread::spawn(move || {
-    if let Err(e) = run_install(&config, &tx) {
-      let _ = tx.send(InstallMessage::Error(e));
-    } else {
-      let _ = tx.send(InstallMessage::Done);
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        if let Err(error) = run_install(&config, &tx) {
+            let _ = tx.send(InstallMessage::Error(error));
+        } else {
+            let _ = tx.send(InstallMessage::Done);
+        }
+    });
+    rx
+}
+
+fn progress(tx: &Sender<InstallMessage>, percent: u16, message: impl Into<String>) {
+    let _ = tx.send(InstallMessage::Progress {
+        percent,
+        message: message.into(),
+    });
+}
+
+fn command(args: &[&str]) -> Result<(), String> {
+    let output = Command::new(args[0])
+        .args(&args[1..])
+        .output()
+        .map_err(|error| format!("Failed to run '{}': {error}", args[0]))?;
+    if output.status.success() {
+        return Ok(());
     }
-  });
-  rx
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-fn prog(tx: &Sender<InstallMessage>, percent: u16, msg: &str) {
-  let _ = tx.send(InstallMessage::Progress {
-    percent,
-    message: msg.to_string(),
-  });
-}
-
-fn cmd(args: &[&str]) -> Result<(), String> {
-  let output = Command::new(args[0])
-    .args(&args[1..])
-    .output()
-    .map_err(|e| format!("Failed to run '{}': {}", args[0], e))?;
-  if !output.status.success() {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    if !stderr.is_empty() {
-      return Err(format!("Command failed: {}\nError: {}", args.join(" "), stderr));
+    Err(if stderr.is_empty() {
+        format!("Command failed: {}", args.join(" "))
     } else {
-      return Err(format!("Command failed: {}", args.join(" ")));
-    }
-  }
-  Ok(())
+        format!("Command failed: {}\n{stderr}", args.join(" "))
+    })
 }
 
-fn cmd_stdin(args: &[&str], input: &[u8]) -> Result<(), String> {
-  let mut child = Command::new(args[0])
-    .args(&args[1..])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped())
-    .spawn()
-    .map_err(|e| format!("Failed to spawn '{}': {}", args[0], e))?;
-  if let Some(mut stdin) = child.stdin.take() {
-    stdin.write_all(input)
-      .map_err(|e| format!("Failed to write stdin: {e}"))?;
-  }
-  let output = child.wait_with_output()
-    .map_err(|e| format!("Failed to wait for '{}': {}", args[0], e))?;
-  if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    if !stderr.is_empty() {
-      return Err(format!("Command failed: {}\nError: {}", args.join(" "), stderr));
+fn command_stdin(args: &[&str], input: &[u8]) -> Result<(), String> {
+    let mut child = Command::new(args[0])
+        .args(&args[1..])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("Failed to run '{}': {error}", args[0]))?;
+    child
+        .stdin
+        .take()
+        .ok_or_else(|| format!("Could not open stdin for {}", args[0]))?
+        .write_all(input)
+        .map_err(|error| format!("Could not write to {}: {error}", args[0]))?;
+    let output = child
+        .wait_with_output()
+        .map_err(|error| format!("Could not wait for {}: {error}", args[0]))?;
+    if output.status.success() {
+        Ok(())
     } else {
-      return Err(format!("Command failed: {}", args.join(" ")));
+        Err(format!(
+            "Command failed: {}\n{}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ))
     }
-  }
-  Ok(())
 }
 
-fn silent_cmd(args: &[&str]) {
-  let _ = Command::new(args[0])
-    .args(&args[1..])
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .status();
+fn quiet_command(args: &[&str]) {
+    let _ = Command::new(args[0])
+        .args(&args[1..])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }
 
-fn write_file(path: &str, content: &str) -> Result<(), String> {
-  std::fs::write(path, content)
-    .map_err(|e| format!("Failed to write {path}: {e}"))
-}
-
-fn get_uuid(device: &str) -> Result<String, String> {
-  let out = Command::new("blkid")
-    .args(["-s", "UUID", "-o", "value", device])
-    .output()
-    .map_err(|e| format!("blkid error: {e}"))?;
-  let uuid = String::from_utf8_lossy(&out.stdout).trim().to_string();
-  if uuid.is_empty() {
-    return Err(format!("Could not get UUID for {device}"));
-  }
-  Ok(uuid)
-}
-
-fn ensure_secure_boot_packages(target: &str, offline: bool) -> Result<(), String> {
-  let packages = [
-    "shim-signed",
-    "grub-efi-amd64-signed",
-    "mokutil",
-    "sbsigntool",
-    "efibootmgr",
-  ];
-  if offline {
-    for package in packages {
-      cmd(&["chroot", target, "dpkg-query", "-W", "-f=${Status}", package])?;
+fn output(args: &[&str]) -> Result<String, String> {
+    let value = Command::new(args[0])
+        .args(&args[1..])
+        .output()
+        .map_err(|error| format!("Failed to run '{}': {error}", args[0]))?;
+    if !value.status.success() {
+        return Err(format!("Command failed: {}", args.join(" ")));
     }
-  } else {
-    let mut args = vec![
-      "chroot", target, "env", "DEBIAN_FRONTEND=noninteractive",
-      "apt-get", "install", "-y",
-    ];
-    args.extend(packages);
-    cmd(&args)?;
-  }
-  Ok(())
+    Ok(String::from_utf8_lossy(&value.stdout).trim().to_string())
 }
 
-fn configure_windows_grub(target: &str, esp_uuid: &str) -> Result<(), String> {
-  let path = format!("{target}/etc/grub.d/35_omybuntu_windows");
-  let script = format!(
-    "#!/bin/sh\n\
-     cat <<'OMYBUNTU_WINDOWS_ENTRY'\n\
-     menuentry 'Windows Boot Manager' --class windows --class os {{\n\
-       insmod part_gpt\n\
-       insmod fat\n\
-       insmod chain\n\
-       search --no-floppy --fs-uuid --set=windows_esp {esp_uuid}\n\
-       chainloader ($windows_esp)/EFI/Microsoft/Boot/bootmgfw.efi\n\
-     }}\n\
-     OMYBUNTU_WINDOWS_ENTRY\n"
-  );
-  write_file(&path, &script)?;
-  cmd(&["chmod", "0755", &path])
+fn write_file(path: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<(), String> {
+    fs::write(path.as_ref(), content)
+        .map_err(|error| format!("Failed to write {}: {error}", path.as_ref().display()))
 }
 
-fn configure_mok(target: &str, password: &str) -> Result<(), String> {
-  if password.is_empty() {
-    return Ok(());
-  }
-  let mok_der = format!("{target}/var/lib/shim-signed/mok/MOK.der");
-  if !std::path::Path::new(&mok_der).exists() {
-    cmd(&["chroot", target, "update-secureboot-policy", "--new-key"])?;
-  }
-  if std::path::Path::new(&format!("{target}/usr/sbin/dkms")).exists() {
-    cmd(&["chroot", target, "dkms", "autoinstall", "--force"])?;
-  }
-  let enrollment_input = format!("{password}\n{password}\n");
-  cmd_stdin(
-    &["chroot", target, "mokutil", "--import", "/var/lib/shim-signed/mok/MOK.der"],
-    enrollment_input.as_bytes(),
-  )
+fn partition_path(disk: &str, number: u32) -> String {
+    let separator = if disk
+        .chars()
+        .last()
+        .is_some_and(|value| value.is_ascii_digit())
+    {
+        "p"
+    } else {
+        ""
+    };
+    format!("{disk}{separator}{number}")
 }
 
-fn verify_signed_boot_chain(target: &str) -> Result<(), String> {
-  let efi_dir = format!("{target}/boot/efi/EFI/Omybuntu");
-  for file in ["shimx64.efi", "grubx64.efi"] {
-    let path = format!("{efi_dir}/{file}");
-    if !std::path::Path::new(&path).is_file() {
-      return Err(format!("Secure Boot file missing after GRUB installation: {path}"));
+fn wait_for_device(path: &str) -> Result<(), String> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline {
+        if Path::new(path).exists() {
+            return Ok(());
+        }
+        thread::sleep(Duration::from_millis(200));
     }
-    cmd(&["sbverify", "--list", &path])?;
-  }
-  Ok(())
+    Err(format!("Partition device did not appear: {path}"))
 }
 
-fn debootstrap_progress(_tx: &Sender<InstallMessage>, line: &str) -> Option<u16> {
-  // debootstrap --verbose outputs lines like:
-  //   I: Retrieving libc6 2.40-1ubuntu3
-  //   I: Validating libc6 2.40-1ubuntu3
-  //   I: Extracting libc6...
-  // No built-in percentage, so we use a simple heuristic:
-  // if line contains "Extracting", it's making progress
-  if line.starts_with("I:") {
-    if line.contains("Extracting") {
-      return Some(55); // near end of debootstrap
+fn secure_boot_enabled() -> bool {
+    fs::read_dir("/sys/firmware/efi/efivars")
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("SecureBoot-")
+        })
+        .any(|entry| {
+            fs::read(entry.path())
+                .ok()
+                .is_some_and(|data| data.get(4) == Some(&1))
+        })
+}
+
+fn clean_target(disk: &str) {
+    quiet_command(&["swapoff", "-a"]);
+    if let Ok(mounts) = output(&["findmnt", "-rn", "-o", "TARGET,SOURCE"]) {
+        let mut targets: Vec<&str> = mounts
+            .lines()
+            .filter_map(|line| {
+                let mut fields = line.split_whitespace();
+                let target = fields.next()?;
+                let source = fields.next()?;
+                source.starts_with(disk).then_some(target)
+            })
+            .collect();
+        targets.sort_by_key(|target| std::cmp::Reverse(target.len()));
+        for target in targets {
+            quiet_command(&["umount", "-lf", target]);
+        }
     }
-    if line.contains("Retrieving") {
-      return Some(45);
+    quiet_command(&["cryptsetup", "close", "omyvoid_crypt"]);
+}
+
+fn create_partitions(storage: &StoragePlan) -> Result<(String, String, Option<String>), String> {
+    let disk = storage.disk();
+    match storage {
+        StoragePlan::EraseDisk { .. } => {
+            clean_target(disk);
+            command(&["sgdisk", "--zap-all", disk])?;
+            command(&[
+                "sgdisk",
+                "-n",
+                "1:0:+2G",
+                "-t",
+                "1:ef00",
+                "-c",
+                "1:OMYVOID_BOOT",
+                "-n",
+                "2:0:0",
+                "-t",
+                "2:8300",
+                "-c",
+                "2:OMYVOID_ROOT",
+                disk,
+            ])?;
+            quiet_command(&["partprobe", disk]);
+            quiet_command(&["udevadm", "settle"]);
+            let boot = partition_path(disk, 1);
+            let root = partition_path(disk, 2);
+            wait_for_device(&boot)?;
+            wait_for_device(&root)?;
+            Ok((boot, root, None))
+        }
+        StoragePlan::AlongsideWindows {
+            esp_uuid,
+            boot_partition_number,
+            root_partition_number,
+            free_region,
+            ..
+        } => {
+            validate_alongside_plan(storage)?;
+            fs::create_dir_all("/run/omyvoid-installer").ok();
+            command(&[
+                "sgdisk",
+                "--backup=/run/omyvoid-installer/partition-table.gpt",
+                disk,
+            ])?;
+            let sector_size: u64 = output(&["blockdev", "--getss", disk])?
+                .parse()
+                .map_err(|_| "Could not determine disk sector size".to_string())?;
+            let boot_sectors = ESP_BYTES / sector_size;
+            let boot_end = free_region
+                .start_sector
+                .checked_add(boot_sectors)
+                .and_then(|value| value.checked_sub(1))
+                .ok_or_else(|| "Invalid free-space geometry".to_string())?;
+            if boot_end >= free_region.end_sector {
+                return Err(
+                    "The selected free region cannot contain a 2 GiB boot partition".into(),
+                );
+            }
+            let boot_range = format!(
+                "{boot_partition_number}:{}:{boot_end}",
+                free_region.start_sector
+            );
+            let boot_type = format!("{boot_partition_number}:ef00");
+            let boot_label = format!("{boot_partition_number}:OMYVOID_BOOT");
+            let root_range = format!(
+                "{root_partition_number}:{}:{}",
+                boot_end + 1,
+                free_region.end_sector
+            );
+            let root_type = format!("{root_partition_number}:8300");
+            let root_label = format!("{root_partition_number}:OMYVOID_ROOT");
+            command(&[
+                "sgdisk",
+                "-n",
+                &boot_range,
+                "-t",
+                &boot_type,
+                "-c",
+                &boot_label,
+                "-n",
+                &root_range,
+                "-t",
+                &root_type,
+                "-c",
+                &root_label,
+                disk,
+            ])?;
+            quiet_command(&["partprobe", disk]);
+            quiet_command(&["udevadm", "settle"]);
+            let boot = partition_path(disk, *boot_partition_number);
+            let root = partition_path(disk, *root_partition_number);
+            if let Err(error) = wait_for_device(&boot).and_then(|_| wait_for_device(&root)) {
+                let boot_number = boot_partition_number.to_string();
+                let root_number = root_partition_number.to_string();
+                quiet_command(&["sgdisk", "-d", &boot_number, "-d", &root_number, disk]);
+                return Err(error);
+            }
+            Ok((boot, root, Some(esp_uuid.clone())))
+        }
     }
-    if line.contains("Validating") || line.contains("Checking") {
-      return Some(50);
+}
+
+fn create_filesystems(
+    boot_partition: &str,
+    root_partition: &str,
+    encrypted: bool,
+    passphrase: &str,
+) -> Result<(String, Option<String>), String> {
+    command(&[
+        "mkfs.vfat",
+        "-F",
+        "32",
+        "-n",
+        "OMYVOID_BOOT",
+        boot_partition,
+    ])?;
+    let (root_device, luks_uuid) = if encrypted {
+        command_stdin(
+            &[
+                "cryptsetup",
+                "luksFormat",
+                "--batch-mode",
+                "--type",
+                "luks2",
+                "--pbkdf",
+                "argon2id",
+                "--key-file",
+                "-",
+                root_partition,
+            ],
+            passphrase.as_bytes(),
+        )?;
+        command_stdin(
+            &[
+                "cryptsetup",
+                "open",
+                "--key-file",
+                "-",
+                root_partition,
+                "omyvoid_crypt",
+            ],
+            passphrase.as_bytes(),
+        )?;
+        (
+            "/dev/mapper/omyvoid_crypt".to_string(),
+            Some(output(&["cryptsetup", "luksUUID", root_partition])?),
+        )
+    } else {
+        (root_partition.to_string(), None)
+    };
+    command(&["mkfs.btrfs", "-f", "-L", "OMYVOID_ROOT", &root_device])?;
+    Ok((root_device, luks_uuid))
+}
+
+fn mount_layout(root_device: &str, boot_partition: &str) -> Result<(), String> {
+    fs::create_dir_all(TARGET).map_err(|error| format!("Could not create {TARGET}: {error}"))?;
+    command(&["mount", "-o", "subvolid=5", root_device, TARGET])?;
+    for subvolume in ["@", "@home", "@log", "@xbps", "@snapshots"] {
+        command(&[
+            "btrfs",
+            "subvolume",
+            "create",
+            &format!("{TARGET}/{subvolume}"),
+        ])?;
     }
-  }
-  None
-}
-
-// ─── Chroot helpers ───────────────────────────────────────────────────────────
-
-fn mount_virtual_fs(target: &str) -> Result<(), String> {
-  cmd(&["mount", "--bind", "/dev",      &format!("{target}/dev")])?;
-  cmd(&["mount", "--bind", "/dev/pts",  &format!("{target}/dev/pts")])?;
-  cmd(&["mount", "-t", "proc", "proc",  &format!("{target}/proc")])?;
-  cmd(&["mount", "-t", "sysfs", "sysfs", &format!("{target}/sys")])?;
-  // Ensure resolv.conf exists so apt can resolve inside chroot
-  let _ = std::fs::copy("/etc/resolv.conf", format!("{target}/etc/resolv.conf"));
-  Ok(())
-}
-
-fn unmount_virtual_fs(target: &str) {
-  let policy_path = format!("{target}/usr/sbin/policy-rc.d");
-  let _ = std::fs::remove_file(policy_path);
-
-  for mp in &["/sys", "/proc", "/dev/pts", "/dev"] {
-    silent_cmd(&["umount", "-lf", &format!("{target}{mp}")]);
-  }
-}
-
-fn write_policy_rc_d(target: &str) -> Result<(), String> {
-  let path = format!("{target}/usr/sbin/policy-rc.d");
-  write_file(&path, "#!/bin/sh\nexit 101\n")?;
-  cmd(&["chmod", "+x", &path])?;
-  Ok(())
+    command(&["umount", TARGET])?;
+    command(&[
+        "mount",
+        "-o",
+        "subvol=@,noatime,compress=zstd",
+        root_device,
+        TARGET,
+    ])?;
+    for directory in ["home", "var/log", "var/cache/xbps", ".snapshots", "boot"] {
+        fs::create_dir_all(format!("{TARGET}/{directory}"))
+            .map_err(|error| format!("Could not create target directory {directory}: {error}"))?;
+    }
+    for (subvolume, mountpoint) in [
+        ("@home", "home"),
+        ("@log", "var/log"),
+        ("@xbps", "var/cache/xbps"),
+        ("@snapshots", ".snapshots"),
+    ] {
+        command(&[
+            "mount",
+            "-o",
+            &format!("subvol={subvolume},noatime,compress=zstd"),
+            root_device,
+            &format!("{TARGET}/{mountpoint}"),
+        ])?;
+    }
+    command(&["mount", boot_partition, &format!("{TARGET}/boot")])
 }
 
 struct TargetCleanup {
-  target: String,
-  encrypted: bool,
-}
-
-impl TargetCleanup {
-  fn new(target: &str, encrypted: bool) -> Self {
-    Self {
-      target: target.to_string(),
-      encrypted,
-    }
-  }
+    encrypted: bool,
 }
 
 impl Drop for TargetCleanup {
-  fn drop(&mut self) {
-    unmount_virtual_fs(&self.target);
-    for mp in &["/boot/efi", "/home", "/.snapshots", ""] {
-      let path = format!("{}{}", self.target, mp);
-      silent_cmd(&["umount", "-lf", &path]);
+    fn drop(&mut self) {
+        for mountpoint in [
+            "run",
+            "sys",
+            "proc",
+            "dev",
+            "boot",
+            ".snapshots",
+            "var/cache/xbps",
+            "var/log",
+            "home",
+            "",
+        ] {
+            quiet_command(&["umount", "-R", "-l", &format!("{TARGET}/{mountpoint}")]);
+        }
+        if self.encrypted {
+            quiet_command(&["cryptsetup", "close", "omyvoid_crypt"]);
+        }
     }
-    if self.encrypted {
-      silent_cmd(&["cryptsetup", "close", "omybuntu_crypt"]);
-    }
-  }
 }
 
-fn write_omybuntu_apt_pins(target: &str) -> Result<(), String> {
-  std::fs::create_dir_all(format!("{target}/etc/apt/preferences.d"))
-    .map_err(|e| format!("Failed to create apt preferences dir: {e}"))?;
-  write_file(
-    &format!("{target}/etc/apt/preferences.d/99-omybuntu-desktop"),
-    concat!(
-      "Package: gdm3\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n\n",
-      "Package: gnome-session\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n\n",
-      "Package: ubuntu-session\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n\n",
-      "Package: ubuntu-desktop\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n\n",
-      "Package: ubuntu-desktop-minimal\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n\n",
-      "Package: budgie-sddm-theme\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n\n",
-      "Package: sddm-theme-breeze\n",
-      "Pin: release *\n",
-      "Pin-Priority: -1\n",
+fn find_offline_repository() -> Option<String> {
+    [
+        "/run/omyvoid/repository",
+        "/run/initramfs/live/repository",
+        "/run/live/medium/repository",
+        "/mnt/omyvoid/repository",
+    ]
+    .into_iter()
+    .find(|path| Path::new(path).join("x86_64-repodata").exists())
+    .map(str::to_string)
+}
+
+fn xbps_install(root: &str, repositories: &[String], packages: &[String]) -> Result<(), String> {
+    let mut process = Command::new("xbps-install");
+    process
+        .env("XBPS_ARCH", "x86_64")
+        .args(["-S", "-y", "-r", root]);
+    for repository in repositories {
+        process.args(["-R", repository]);
+    }
+    process.args(packages);
+    let output = process
+        .output()
+        .map_err(|error| format!("Could not start xbps-install: {error}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "XBPS installation failed:\n{}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ))
+    }
+}
+
+fn repository_list(offline: bool) -> Result<Vec<String>, String> {
+    if offline {
+        return find_offline_repository()
+            .map(|repository| vec![repository])
+            .ok_or_else(|| "The ISO does not contain the signed offline XBPS repository".into());
+    }
+    Ok(vec![
+        MAIN_REPOSITORY.to_string(),
+        format!("{MAIN_REPOSITORY}/nonfree"),
+        format!("{MAIN_REPOSITORY}/multilib"),
+        format!("{MAIN_REPOSITORY}/multilib/nonfree"),
+        BLACKHOLE_REPOSITORY.to_string(),
+        std::env::var("OMYVOID_REPO_URL").unwrap_or_else(|_| OMYVOID_REPOSITORY.to_string()),
+    ])
+}
+
+fn packages_from_manifest() -> Result<Vec<String>, String> {
+    let source = std::env::var("OMYVOID_PATH").unwrap_or_else(|_| "/opt/omyvoid".into());
+    let manifest = fs::read_to_string(format!("{source}/install/omyvoid-base.packages"))
+        .map_err(|error| format!("Could not read the Omyvoid package manifest: {error}"))?;
+    Ok(manifest
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(str::to_string)
+        .collect())
+}
+
+fn write_xbps_repositories() -> Result<(), String> {
+    fs::create_dir_all(format!("{TARGET}/etc/xbps.d"))
+        .map_err(|error| format!("Could not create XBPS configuration: {error}"))?;
+    write_file(
+        format!("{TARGET}/etc/xbps.d/00-repository-main.conf"),
+        format!(
+            "repository={MAIN_REPOSITORY}\nrepository={MAIN_REPOSITORY}/nonfree\n\
+       repository={MAIN_REPOSITORY}/multilib\nrepository={MAIN_REPOSITORY}/multilib/nonfree\n\
+       repository={BLACKHOLE_REPOSITORY}\nrepository={OMYVOID_REPOSITORY}\n"
+        ),
+    )
+}
+
+fn copy_omyvoid_source() -> Result<(), String> {
+    let source = std::env::var("OMYVOID_PATH").unwrap_or_else(|_| "/opt/omyvoid".into());
+    if !Path::new(&source).is_dir() {
+        return Err(format!("Omyvoid source directory was not found: {source}"));
+    }
+    fs::create_dir_all(format!("{TARGET}/opt/omyvoid"))
+        .map_err(|error| format!("Could not create /opt/omyvoid: {error}"))?;
+    command(&[
+        "rsync",
+        "-a",
+        "--delete",
+        "--exclude=.git/",
+        "--exclude=build/",
+        "--exclude=installer/target/",
+        &format!("{source}/"),
+        &format!("{TARGET}/opt/omyvoid/"),
+    ])
+}
+
+fn mount_virtual_filesystems() -> Result<(), String> {
+    for directory in ["dev", "proc", "sys", "run"] {
+        fs::create_dir_all(format!("{TARGET}/{directory}")).ok();
+    }
+    command(&["mount", "--rbind", "/dev", &format!("{TARGET}/dev")])?;
+    command(&["mount", "--make-rslave", &format!("{TARGET}/dev")])?;
+    command(&["mount", "-t", "proc", "proc", &format!("{TARGET}/proc")])?;
+    command(&["mount", "--rbind", "/sys", &format!("{TARGET}/sys")])?;
+    command(&["mount", "--make-rslave", &format!("{TARGET}/sys")])?;
+    command(&["mount", "--rbind", "/run", &format!("{TARGET}/run")])?;
+    command(&["mount", "--make-rslave", &format!("{TARGET}/run")])?;
+    let _ = fs::copy("/etc/resolv.conf", format!("{TARGET}/etc/resolv.conf"));
+    Ok(())
+}
+
+fn chroot(args: &[&str]) -> Result<(), String> {
+    let mut values = vec!["chroot", TARGET];
+    values.extend_from_slice(args);
+    command(&values)
+}
+
+fn chroot_stdin(args: &[&str], input: &[u8]) -> Result<(), String> {
+    let mut values = vec!["chroot", TARGET];
+    values.extend_from_slice(args);
+    command_stdin(&values, input)
+}
+
+fn filesystem_uuid(device: &str) -> Result<String, String> {
+    let uuid = output(&["blkid", "-s", "UUID", "-o", "value", device])?;
+    if uuid.is_empty() {
+        Err(format!("Could not determine filesystem UUID for {device}"))
+    } else {
+        Ok(uuid)
+    }
+}
+
+fn fstab(root_uuid: &str, boot_uuid: &str) -> String {
+    format!(
+        "UUID={root_uuid} / btrfs noatime,compress=zstd,subvol=@ 0 0\n\
+     UUID={root_uuid} /home btrfs noatime,compress=zstd,subvol=@home 0 0\n\
+     UUID={root_uuid} /var/log btrfs noatime,compress=zstd,subvol=@log 0 0\n\
+     UUID={root_uuid} /var/cache/xbps btrfs noatime,compress=zstd,subvol=@xbps 0 0\n\
+     UUID={root_uuid} /.snapshots btrfs noatime,compress=zstd,subvol=@snapshots 0 0\n\
+     UUID={boot_uuid} /boot vfat noatime,umask=0077 0 2\n"
+    )
+}
+
+fn configure_identity(cfg: &InstallConfig, root_uuid: &str, boot_uuid: &str) -> Result<(), String> {
+    fs::create_dir_all(format!("{TARGET}/etc/sudoers.d")).ok();
+    write_file(format!("{TARGET}/etc/fstab"), fstab(root_uuid, boot_uuid))?;
+    write_file(
+        format!("{TARGET}/etc/hostname"),
+        format!("{}\n", cfg.hostname),
+    )?;
+    write_file(
+        format!("{TARGET}/etc/hosts"),
+        format!(
+            "127.0.0.1 localhost\n127.0.1.1 {}\n::1 localhost ip6-localhost ip6-loopback\n",
+            cfg.hostname
+        ),
+    )?;
+    write_file(
+        format!("{TARGET}/etc/locale.conf"),
+        format!("LANG={}\n", cfg.locale),
+    )?;
+    write_file(
+        format!("{TARGET}/etc/vconsole.conf"),
+        format!("KEYMAP={}\n", cfg.keymap),
+    )?;
+    write_file(
+        format!("{TARGET}/etc/sudoers.d/10-omyvoid-wheel"),
+        "%wheel ALL=(ALL:ALL) ALL\n",
+    )?;
+    command(&[
+        "chmod",
+        "0440",
+        &format!("{TARGET}/etc/sudoers.d/10-omyvoid-wheel"),
+    ])?;
+
+    chroot(&[
+        "ln",
+        "-snf",
+        &format!("/usr/share/zoneinfo/{}", cfg.timezone),
+        "/etc/localtime",
+    ])?;
+    chroot(&[
+        "sed",
+        "-i",
+        &format!("s/^#{} UTF-8/{} UTF-8/", cfg.locale, cfg.locale),
+        "/etc/default/libc-locales",
+    ])?;
+    chroot(&["xbps-reconfigure", "-f", "glibc-locales"])?;
+    chroot(&["useradd", "-m", "-s", "/bin/bash", &cfg.username])?;
+    for group in [
+        "wheel", "audio", "video", "input", "render", "kvm", "storage", "network", "docker",
+    ] {
+        let status = Command::new("chroot")
+            .args([TARGET, "getent", "group", group])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map_err(|error| format!("Could not inspect group {group}: {error}"))?;
+        if status.success() {
+            chroot(&["usermod", "-aG", group, &cfg.username])?;
+        }
+    }
+    chroot_stdin(
+        &["chpasswd"],
+        format!(
+            "{}:{}\nroot:{}\n",
+            cfg.username, cfg.password, cfg.root_password
+        )
+        .as_bytes(),
+    )?;
+
+    let language_dir = format!("{TARGET}/home/{}/.config/omyvoid", cfg.username);
+    fs::create_dir_all(&language_dir).ok();
+    write_file(
+        format!("{language_dir}/language"),
+        format!("{}\n", cfg.language),
+    )?;
+    chroot(&[
+        "chown",
+        "-R",
+        &format!("{}:{}", cfg.username, cfg.username),
+        &format!("/home/{}", cfg.username),
+    ])
+}
+
+fn configure_limine_source(
+    root_uuid: &str,
+    luks_uuid: Option<&str>,
+    windows_uuid: Option<&str>,
+) -> Result<(), String> {
+    fs::create_dir_all(format!("{TARGET}/etc/default")).ok();
+    write_file(
+    format!("{TARGET}/etc/default/limine"),
+    format!(
+      "ESP_PATH=\"/boot\"\nOMYVOID_ROOT_SUBVOLUME=\"@\"\nOMYVOID_ROOT_UUID=\"{root_uuid}\"\n\
+       OMYVOID_LUKS_UUID=\"{}\"\nOMYVOID_KERNEL_CMDLINE=\"rw quiet splash loglevel=3 rd.udev.log_level=3\"\n\
+       OMYVOID_WINDOWS_EFI_UUID=\"{}\"\nOMYVOID_WINDOWS_EFI_PATH=\"/EFI/Microsoft/Boot/bootmgfw.efi\"\n\
+       OMYVOID_KEEP_SNAPSHOTS=5\n",
+      luks_uuid.unwrap_or_default(),
+      windows_uuid.unwrap_or_default(),
     ),
   )
 }
 
-fn write_omybuntu_sources_list(target: &str) -> Result<(), String> {
-  let content = format!(
-    "deb {mirror} {codename} main restricted universe multiverse\n\
-     deb {mirror} {codename}-updates main restricted universe multiverse\n\
-     deb {mirror} {codename}-backports main restricted universe multiverse\n\
-     deb http://security.ubuntu.com/ubuntu/ {codename}-security main restricted universe multiverse\n",
-    mirror = UBUNTU_MIRROR,
-    codename = UBUNTU_CODENAME
-  );
-  write_file(&format!("{target}/etc/apt/sources.list"), &content)
-}
-
-fn prepare_omybuntu_source_link(target: &str) -> Result<(), String> {
-  std::fs::create_dir_all(format!("{target}/root/.local/share"))
-    .map_err(|e| format!("Failed to create root local share: {e}"))?;
-  let link = format!("{target}/root/.local/share/omybuntu");
-  let _ = std::fs::remove_file(&link);
-  std::os::unix::fs::symlink("/opt/omybuntu", &link)
-    .map_err(|e| format!("Failed to link root Omybuntu source: {e}"))
-}
-
-fn configure_target_login(target: &str, username: &str, encrypted: bool) -> Result<(), String> {
-  std::fs::create_dir_all(format!("{target}/etc/sddm.conf.d"))
-    .map_err(|e| format!("Failed to create sddm.conf.d: {e}"))?;
-  let autologin_block = if encrypted {
-    format!(
-      "[Autologin]\n\
-User={username}\n\
-Session=omybuntu\n\
-Relogin=true\n\n",
-    )
-  } else {
-    String::new()
-  };
-  write_file(
-    &format!("{target}/etc/sddm.conf.d/99-omybuntu.conf"),
-    &format!(
-      "[General]\n\
-DisplayServer=wayland\n\
-DefaultSession=omybuntu\n\n\
-[Wayland]\n\
-CompositorCommand=start-hyprland -- --config /usr/share/sddm/hyprland.conf\n\n\
-{autologin_block}\
-[Theme]\n\
-Current=omybuntu\n",
-    ),
-  )?;
-
-  std::fs::create_dir_all(format!("{target}/etc/systemd/system/graphical.target.wants"))
-    .map_err(|e| format!("Failed to create graphical target wants dir: {e}"))?;
-  let display_manager = format!("{target}/etc/systemd/system/display-manager.service");
-  let graphical_want = format!("{target}/etc/systemd/system/graphical.target.wants/sddm.service");
-  let default_target = format!("{target}/etc/systemd/system/default.target");
-  let _ = std::fs::remove_file(&display_manager);
-  let _ = std::fs::remove_file(&graphical_want);
-  let _ = std::fs::remove_file(&default_target);
-
-  let sddm_unit = if std::path::Path::new(&format!("{target}/usr/lib/systemd/system/sddm.service")).exists() {
-    "/usr/lib/systemd/system/sddm.service"
-  } else {
-    "/lib/systemd/system/sddm.service"
-  };
-  std::os::unix::fs::symlink(sddm_unit, &display_manager)
-    .map_err(|e| format!("Failed to link display-manager.service: {e}"))?;
-  std::os::unix::fs::symlink(sddm_unit, &graphical_want)
-    .map_err(|e| format!("Failed to link sddm.service into graphical target: {e}"))?;
-
-  let graphical_target = if std::path::Path::new(&format!("{target}/usr/lib/systemd/system/graphical.target")).exists() {
-    "/usr/lib/systemd/system/graphical.target"
-  } else {
-    "/lib/systemd/system/graphical.target"
-  };
-  std::os::unix::fs::symlink(graphical_target, &default_target)
-    .map_err(|e| format!("Failed to set graphical.target as default: {e}"))?;
-
-  Ok(())
-}
-
-fn clean_disk_mounts(disk: &str) -> Result<(), String> {
-  // 0. Deactivate LVM volume groups to avoid locked partitions
-  silent_cmd(&["vgchange", "-an"]);
-
-  // 1. Run swapoff on any partition of the disk
-  if let Ok(file) = std::fs::File::open("/proc/swaps") {
-    let reader = BufReader::new(file);
-    for line in reader.lines().map_while(Result::ok) {
-      let parts: Vec<&str> = line.split_whitespace().collect();
-      if !parts.is_empty() && (parts[0].starts_with(disk) || parts[0] == disk) {
-        silent_cmd(&["swapoff", parts[0]]);
-      }
-    }
-  }
-
-  // 2. Find and unmount any mounted partitions of the disk from /proc/mounts
-  let mut mounts = Vec::new();
-  if let Ok(file) = std::fs::File::open("/proc/mounts") {
-    let reader = BufReader::new(file);
-    for line in reader.lines().map_while(Result::ok) {
-      let parts: Vec<&str> = line.split_whitespace().collect();
-      if parts.len() >= 2 && (parts[0].starts_with(disk) || parts[0] == disk) {
-        mounts.push((parts[0].to_string(), parts[1].to_string()));
-      }
-    }
-  }
-  // Sort mounts by mount point path length descending to unmount nested mounts first
-  mounts.sort_by_key(|mount| std::cmp::Reverse(mount.1.len()));
-  for (_, mp) in &mounts {
-    silent_cmd(&["umount", "-lf", mp]);
-  }
-
-  // 3. Check for any holder device mapper (LUKS) mappings.
-  if let Ok(entries) = std::fs::read_dir("/sys/class/block") {
-    for entry in entries.map_while(Result::ok) {
-      let name = entry.file_name().to_string_lossy().into_owned();
-      let disk_leaf = disk.trim_start_matches("/dev/");
-      if name.starts_with(disk_leaf) {
-        let holders_path = format!("/sys/class/block/{}/holders", name);
-        if let Ok(holders) = std::fs::read_dir(&holders_path) {
-          for holder in holders.map_while(Result::ok) {
-            let dm_name = holder.file_name().to_string_lossy().into_owned();
-            let crypt_name_path = format!("/sys/class/block/{}/dm/name", dm_name);
-            if let Ok(crypt_name) = std::fs::read_to_string(&crypt_name_path) {
-              let crypt_name = crypt_name.trim();
-              if !crypt_name.is_empty() {
-                silent_cmd(&["cryptsetup", "close", crypt_name]);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  Ok(())
-}
-
-fn run_diagnostic_commands(disk: &str) -> Result<(), String> {
-  eprintln!("=== INSTALLER DIAGNOSTICS ===");
-  eprintln!("Disk: {}", disk);
-  
-  let lsblk_out = Command::new("lsblk").args(["-o", "NAME,FSTYPE,SIZE,MOUNTPOINTS", disk]).output();
-  match lsblk_out {
-    Ok(out) => {
-      eprintln!("lsblk output:\n{}", String::from_utf8_lossy(&out.stdout));
-      eprintln!("lsblk stderr:\n{}", String::from_utf8_lossy(&out.stderr));
-    }
-    Err(e) => eprintln!("Failed to run lsblk: {}", e),
-  }
-
-  let findmnt_out = Command::new("findmnt").output();
-  match findmnt_out {
-    Ok(out) => {
-      eprintln!("findmnt output (filtered for disk):\n{}", 
-        String::from_utf8_lossy(&out.stdout)
-          .lines()
-          .filter(|l| l.contains(disk) || l.contains("mapper"))
-          .collect::<Vec<_>>()
-          .join("\n")
-      );
-    }
-    Err(e) => eprintln!("Failed to run findmnt: {}", e),
-  }
-
-  let dm_out = Command::new("dmsetup").arg("ls").output();
-  match dm_out {
-    Ok(out) => {
-      eprintln!("dmsetup ls output:\n{}", String::from_utf8_lossy(&out.stdout));
-    }
-    Err(e) => eprintln!("Failed to run dmsetup ls: {}", e),
-  }
-
-  eprintln!("=============================");
-  Ok(())
-}
-
-fn spawn_log_tailer(target: &str, tx: Sender<InstallMessage>, done: Arc<AtomicBool>) {
-  let log_path = format!("{target}/var/log/omybuntu-install.log");
-  thread::spawn(move || {
-    // Wait for the file to exist
-    let mut file = loop {
-      if done.load(Ordering::Relaxed) {
-        return;
-      }
-      if let Ok(f) = std::fs::File::open(&log_path) {
-        break f;
-      }
-      thread::sleep(std::time::Duration::from_millis(100));
-    };
-
-    // Seek to start
-    let _ = file.seek(SeekFrom::Start(0));
-    let mut reader = BufReader::new(file);
-    let mut line = String::new();
-
-    loop {
-      if done.load(Ordering::Relaxed) {
-        break;
-      }
-      line.clear();
-      match reader.read_line(&mut line) {
-        Ok(0) => {
-          thread::sleep(std::time::Duration::from_millis(100));
-        }
-        Ok(_) => {
-          let clean_line = line.trim().to_string();
-          if !clean_line.is_empty() {
-            prog(&tx, 72, &clean_line);
-          }
-        }
-        Err(_) => {
-          thread::sleep(std::time::Duration::from_millis(100));
-        }
-      }
-    }
-  });
-}
-
-fn parse_rsync_percentage(line: &str) -> Option<u16> {
-  if let Some(pos) = line.find('%') {
-    let part = &line[..pos];
-    if let Some(start_pos) = part.rfind(|c: char| c.is_whitespace()) {
-      let num_str = part[start_pos..].trim();
-      if let Ok(val @ 0..=100) = num_str.parse::<u16>() {
-        return Some(val);
-      }
-    }
-  }
-  None
-}
-
-fn run_rsync_copy(target: &str, tx: &Sender<InstallMessage>) -> Result<(), String> {
-  let mut child = Command::new("rsync")
-    .args([
-      "-aAX",
-      "--info=progress2",
-      "--out-format=Copying: %n%L",
-      "--exclude=/dev/*",
-      "--exclude=/proc/*",
-      "--exclude=/sys/*",
-      "--exclude=/tmp/*",
-      "--exclude=/run/*",
-      "--exclude=/mnt/*",
-      "--exclude=/media/*",
-      "--exclude=/lost+found",
-      "/",
-      &format!("{target}/"),
-    ])
-    .stdout(Stdio::piped())
-    .stderr(Stdio::null())
-    .spawn()
-    .map_err(|e| format!("Failed to spawn rsync: {e}"))?;
-
-  let mut current_percent = 0;
-  if let Some(stdout) = child.stdout.take() {
-    let reader = BufReader::new(stdout);
-    for line in reader.lines().map_while(Result::ok) {
-      for record in line.split('\r').map(str::trim).filter(|record| !record.is_empty()) {
-        if let Some(pct) = parse_rsync_percentage(record) {
-          current_percent = pct;
-          let mapped_pct = 40 + (pct * 30 / 100);
-          prog(tx, mapped_pct, &format!("Copying system files: {pct}%"));
-        } else if record.starts_with("Copying: ") {
-          let mapped_pct = 40 + (current_percent * 30 / 100);
-          prog(tx, mapped_pct, record);
-        }
-      }
-    }
-  }
-
-  let status = child.wait().map_err(|e| format!("rsync wait: {e}"))?;
-  if !status.success() {
-    return Err("rsync copy failed".into());
-  }
-  Ok(())
-}
-
-// ─── Installation ─────────────────────────────────────────────────────────────
-
-fn run_install(cfg: &InstallConfig, tx: &Sender<InstallMessage>) -> Result<(), String> {
-  let target = "/mnt";
-  let disk = cfg.storage.disk().to_string();
-  let (part_efi, part_root) = match &cfg.storage {
-    StoragePlan::EraseDisk { .. } => {
-      let suffix = if disk.contains("nvme") || disk.contains("mmcblk") { "p" } else { "" };
-      let part_efi = format!("{disk}{suffix}1");
-      let part_root = format!("{disk}{suffix}2");
-
-      prog(tx, 5, "Partitioning disk...");
-      if let Err(e) = clean_disk_mounts(&disk) {
-        eprintln!("Warning while cleaning disk mounts: {e}");
-      }
-      if let Err(e) = cmd(&["sgdisk", "--zap-all", &disk]) {
-        eprintln!("Initial sgdisk --zap-all failed: {e}. Running diagnostics...");
-        let _ = run_diagnostic_commands(&disk);
-        eprintln!("Trying to wipe partition headers with dd...");
-        let _ = Command::new("dd")
-          .args(["if=/dev/zero", &format!("of={disk}"), "bs=1M", "count=10", "oflag=direct"])
-          .stdout(Stdio::null())
-          .stderr(Stdio::null())
-          .status();
-        silent_cmd(&["partprobe", &disk]);
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        if let Err(retry_err) = cmd(&["sgdisk", "--zap-all", &disk]) {
-          eprintln!("sgdisk --zap-all failed again: {retry_err}. Trying parted...");
-          cmd(&["parted", "-s", &disk, "mklabel", "gpt"])
-            .map_err(|final_err| format!("Partitioning failed: {final_err}"))?;
-        }
-      }
-      cmd(&[
-        "sgdisk",
-        "-n", "1:0:+512M", "-t", "1:ef00",
-        "-n", "2:0:0", "-t", "2:8300",
-        &disk,
-      ])?;
-      silent_cmd(&["partprobe", &disk]);
-      silent_cmd(&["udevadm", "settle"]);
-      prog(tx, 10, "Formatting EFI partition...");
-      cmd(&["mkfs.vfat", "-F32", &part_efi])?;
-      (part_efi, part_root)
-    }
-    StoragePlan::AlongsideWindows {
-      esp_partition,
-      root_partition_number,
-      free_region,
-      ..
-    } => {
-      prog(tx, 3, "Revalidating the Windows disk layout...");
-      validate_alongside_plan(&cfg.storage)?;
-      std::fs::create_dir_all("/run/omybuntu-installer").ok();
-      let backup = "/run/omybuntu-installer/partition-table.gpt";
-      let _ = cmd(&["sgdisk", &format!("--backup={backup}"), &disk]);
-
-      prog(tx, 6, "Creating Omybuntu in the selected unallocated region...");
-      let number = root_partition_number.to_string();
-      let range = format!("{}:{}:{}", root_partition_number, free_region.start_sector, free_region.end_sector);
-      let type_code = format!("{root_partition_number}:8300");
-      let label = format!("{root_partition_number}:Omybuntu");
-      cmd(&["sgdisk", "-n", &range, "-t", &type_code, "-c", &label, &disk])?;
-      silent_cmd(&["partprobe", &disk]);
-      silent_cmd(&["udevadm", "settle"]);
-      std::thread::sleep(std::time::Duration::from_secs(1));
-      let suffix = if disk.chars().last().is_some_and(|c| c.is_ascii_digit()) { "p" } else { "" };
-      let root = format!("{disk}{suffix}{number}");
-      if !std::path::Path::new(&root).exists() {
-        let _ = cmd(&["sgdisk", "-d", &number, &disk]);
-        return Err(format!("The new Omybuntu partition {root} did not appear; the partition was rolled back"));
-      }
-      (esp_partition.clone(), root)
-    }
-  };
-
-  // ── 3. LUKS or direct ─────────────────────────────────────────────────────
-  let root_dev = if cfg.encrypt {
-    prog(tx, 15, "Setting up LUKS encryption...");
-    cmd_stdin(
-      &["cryptsetup", "luksFormat", "--batch-mode", &part_root, "--key-file=-"],
-      cfg.luks_pass.as_bytes(),
-    )?;
-    prog(tx, 20, "Opening encrypted volume...");
-    cmd_stdin(
-      &["cryptsetup", "open", &part_root, "omybuntu_crypt", "--key-file=-"],
-      cfg.luks_pass.as_bytes(),
-    )?;
-    "/dev/mapper/omybuntu_crypt".to_string()
-  } else {
-    part_root.clone()
-  };
-
-  // ── 4. Format BTRFS ───────────────────────────────────────────────────────
-  prog(tx, 25, "Formatting root partition as BTRFS...");
-  cmd(&["mkfs.btrfs", "-f", &root_dev])?;
-
-  // ── 5. BTRFS subvolumes ───────────────────────────────────────────────────
-  prog(tx, 30, "Creating BTRFS subvolumes (@, @home, @snapshots)...");
-  cmd(&["mount", &root_dev, target])?;
-  cmd(&["btrfs", "subvolume", "create", &format!("{target}/@")])?;
-  cmd(&["btrfs", "subvolume", "create", &format!("{target}/@home")])?;
-  cmd(&["btrfs", "subvolume", "create", &format!("{target}/@snapshots")])?;
-  cmd(&["umount", target])?;
-
-  // ── 6. Mount target layout ────────────────────────────────────────────────
-  prog(tx, 35, "Mounting BTRFS subvolumes...");
-  cmd(&["mount", "-o", "subvol=@,noatime,compress=zstd",      &root_dev, target])?;
-  cmd(&["mkdir", "-p", &format!("{target}/home"),
-                     &format!("{target}/boot/efi"),
-                     &format!("{target}/.snapshots")])?;
-  cmd(&["mount", "-o", "subvol=@home,noatime,compress=zstd",     &root_dev, &format!("{target}/home")])?;
-  cmd(&["mount", "-o", "subvol=@snapshots,noatime,compress=zstd",&root_dev, &format!("{target}/.snapshots")])?;
-  cmd(&["mount", &part_efi, &format!("{target}/boot/efi")])?;
-  let _target_cleanup = TargetCleanup::new(target, cfg.encrypt);
-
-  if cfg.offline {
-    prog(tx, 40, "Copying system files from Live ISO...");
-    run_rsync_copy(target, tx)?;
-    prog(tx, 70, "System files copied successfully.");
-
-    prog(tx, 70, "Mounting virtual filesystems for chroot...");
-    mount_virtual_fs(target)?;
-    write_policy_rc_d(target)?;
-  } else {
-    // ── 7. Debootstrap Ubuntu base ────────────────────────────────────────────
-    prog(tx, 40, "Installing Ubuntu base system via debootstrap...");
-    let mut debootstrap = Command::new("debootstrap")
-      .args(["--arch=amd64", "--verbose", UBUNTU_CODENAME, target, UBUNTU_MIRROR])
-      .stdout(Stdio::piped())
-      .stderr(Stdio::null())
-      .spawn()
-      .map_err(|e| format!("debootstrap: {e}"))?;
-
-    if let Some(stdout) = debootstrap.stdout.take() {
-      let reader = BufReader::new(stdout);
-      for line in reader.lines().map_while(Result::ok) {
-        if let Some(pct) = debootstrap_progress(tx, &line) {
-          let label = line.trim().trim_start_matches("I: ").to_string();
-          prog(tx, pct, if label.is_empty() { "Debootstrap in progress..." } else { &label });
-        }
-      }
-    }
-    let status = debootstrap.wait().map_err(|e| format!("debootstrap wait: {e}"))?;
-    if !status.success() {
-      return Err("debootstrap failed — check network mirror and target disk".into());
-    }
-
-    write_omybuntu_sources_list(target)?;
-
-    // ── 8. Copy Omybuntu codebase to target ───────────────────────────────────
-    prog(tx, 58, "Copying Omybuntu to target system...");
-    cmd(&["mkdir", "-p", &format!("{target}/opt/omybuntu")])?;
-    let output = Command::new("rsync")
-      .args([
-        "-a", "--delete",
-        "--exclude=build/",
-        "--exclude=.git/",
-        "--exclude=installer/target/",
-        "--exclude=*.iso",
-        "--exclude=.iso-cache/",
-        "--exclude=ubuntu-base.tar.gz",
-        "/opt/omybuntu/",
-        &format!("{target}/opt/omybuntu/"),
-      ])
-      .output()
-      .map_err(|e| format!("rsync copy omybuntu: {e}"))?;
-    if !output.status.success() {
-      let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-      if !stderr.is_empty() {
-        return Err(format!("Failed to copy Omybuntu to target: {}", stderr));
-      } else {
-        return Err("Failed to copy Omybuntu to target".into());
-      }
-    }
-    prepare_omybuntu_source_link(target)?;
-    write_omybuntu_apt_pins(target)?;
-
-    // ── 9. Mount virtual filesystems for chroot ───────────────────────────────
-    prog(tx, 60, "Mounting virtual filesystems for chroot...");
-    mount_virtual_fs(target)?;
-    write_policy_rc_d(target)?;
-
-    prog(tx, 61, "Installing bootstrap packages inside chroot...");
-    cmd(&[
-      "chroot", target, "env", "DEBIAN_FRONTEND=noninteractive",
-      "apt-get", "update"
-    ])?;
-    cmd(&[
-      "chroot", target, "env", "DEBIAN_FRONTEND=noninteractive",
-      "apt-get", "install", "-y", "curl", "gpg", "ca-certificates", "sudo", "software-properties-common", "git", "wget", "gum", "zstd"
-    ])?;
-  }
-
-  // ── 10. Generate fstab ───────────────────────────────────────────────────
-  prog(tx, 62, "Generating /etc/fstab...");
-  let uuid_root = get_uuid(&root_dev)?;
-  let uuid_efi  = get_uuid(&part_efi)?;
-  let fstab_path = format!("{target}/etc/fstab");
-  write_file(
-    &fstab_path,
-    &format!(
-      "UUID={uuid_root}  /            btrfs  subvol=@,defaults,noatime,compress=zstd           0 1\n\
-       UUID={uuid_root}  /home        btrfs  subvol=@home,defaults,noatime,compress=zstd       0 2\n\
-       UUID={uuid_root}  /.snapshots  btrfs  subvol=@snapshots,defaults,noatime,compress=zstd  0 2\n\
-       UUID={uuid_efi}   /boot/efi    vfat   defaults,noatime                                   0 2\n",
-    ),
-  )?;
-
-  // ── 11. crypttab ──────────────────────────────────────────────────────────
-  if cfg.encrypt {
-    prog(tx, 64, "Generating /etc/crypttab...");
-    let uuid_luks = get_uuid(&part_root)?;
-    write_file(
-      &format!("{target}/etc/crypttab"),
-      &format!("omybuntu_crypt UUID={uuid_luks} none luks,discard\n"),
-    )?;
-  }
-
-  // ── 12. Hostname + hosts ──────────────────────────────────────────────────
-  prog(tx, 66, "Configuring hostname...");
-  write_file(&format!("{target}/etc/hostname"), &format!("{}\n", cfg.hostname))?;
-  write_file(
-    &format!("{target}/etc/hosts"),
-    &format!(
-      "127.0.0.1\tlocalhost\n127.0.1.1\t{}\n::1\tlocalhost ip6-localhost ip6-loopback\n",
-      cfg.hostname,
-    ),
-  )?;
-
-  // ── 13. Locale + keyboard ─────────────────────────────────────────────────
-  prog(tx, 68, "Configuring locale and keyboard layout...");
-  write_file(
-    &format!("{target}/etc/default/locale"),
-    &format!("LANG=\"{}\"\nLANGUAGE=\"{}\"\n", cfg.locale, cfg.locale),
-  )?;
-  write_file(
-    &format!("{target}/etc/default/keyboard"),
-    &format!("XKBLAYOUT={}\nXKBMODEL=pc105\n", cfg.keymap),
-  )?;
-
-  // Generate locale
-  let _ = Command::new("chroot")
-    .args([target, "locale-gen", &cfg.locale])
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .status();
-
-  // ── 14. Timezone ──────────────────────────────────────────────────────────
-  prog(tx, 70, "Setting timezone...");
-  cmd(&[
-    "chroot", target, "ln", "-sf",
-    &format!("/usr/share/zoneinfo/{}", cfg.timezone),
-    "/etc/localtime",
-  ])?;
-
-  if !cfg.offline {
-    // ── 15. Run Omybuntu install.sh inside chroot ────────────────────────────
-    prog(tx, 72, "Configuring Omybuntu system (install.sh)...");
-
-    let done_flag = Arc::new(AtomicBool::new(false));
-    spawn_log_tailer(target, tx.clone(), done_flag.clone());
-    let target_user_env = format!("OMYBUNTU_TARGET_USER={}", cfg.username);
-    let language_env = format!("OMYBUNTU_LANGUAGE={}", cfg.language);
-    let encrypted_install_env = if cfg.encrypt {
-      "OMYBUNTU_ENCRYPTED_INSTALL=true"
-    } else {
-      "OMYBUNTU_ENCRYPTED_INSTALL=false"
-    };
-    let status_res = Command::new("chroot")
-      .arg(target)
-      .arg("/usr/bin/env")
-      .arg("-i")
-      .args([
-        "HOME=/root",
-        "USER=root",
-        "LOGNAME=root",
+fn run_omyvoid_install(cfg: &InstallConfig) -> Result<(), String> {
+    let home = format!("HOME=/home/{}", cfg.username);
+    let user = format!("USER={}", cfg.username);
+    let language = format!("OMYVOID_LANGUAGE={}", cfg.language);
+    let target_user = format!("OMYVOID_TARGET_USER={}", cfg.username);
+    let encrypted = format!("OMYVOID_ENCRYPTED_INSTALL={}", cfg.encrypt);
+    chroot(&[
+        "/usr/bin/env",
+        "-i",
+        &home,
+        &user,
+        &format!("LOGNAME={}", cfg.username),
         "SHELL=/bin/bash",
         "TERM=linux",
-        "PATH=/opt/omybuntu/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-        "OMYBUNTU_PATH=/opt/omybuntu",
-        "OMYBUNTU_INSTALL=/opt/omybuntu/install",
-        "OMYBUNTU_INSTALL_LOG_FILE=/var/log/omybuntu-install.log",
-        "OMYBUNTU_ONLINE_INSTALL=true",
-        "OMYBUNTU_CHROOT_INSTALL=true",
-        encrypted_install_env,
-        "DEBIAN_FRONTEND=noninteractive",
-      ])
-      .arg(&language_env)
-      .arg(target_user_env)
-      .args([
-        "/bin/bash", "-e", "-c",
-        "cd /opt/omybuntu && ./install.sh",
-      ])
-      .stdout(Stdio::null())
-      .stderr(Stdio::null())
-      .status();
-
-    done_flag.store(true, Ordering::Relaxed);
-    let status = status_res.map_err(|e| format!("chroot install.sh: {e}"))?;
-    if !status.success() {
-      return Err("Omybuntu install.sh failed inside chroot".into());
-    }
-  }
-
-  // ── 16. Create user account ──────────────────────────────────────────────
-  prog(tx, 84, "Creating user account...");
-  cmd(&["chroot", target, "groupadd", "-f", "sudo"])?;
-  cmd(&["chroot", target, "useradd", "-m", "-s", "/bin/bash", &cfg.username])?;
-  for group in &["sudo", "audio", "video", "users", "input", "render", "docker"] {
-    let status = Command::new("chroot")
-      .args([target, "getent", "group", group])
-      .stdout(Stdio::null())
-      .stderr(Stdio::null())
-      .status()
-      .map_err(|e| format!("Failed to check group {group}: {e}"))?;
-    if status.success() {
-      cmd(&["chroot", target, "usermod", "-aG", group, &cfg.username])?;
-    }
-  }
-
-  cmd_stdin(
-    &["chroot", target, "chpasswd"],
-    format!("{}:{}\n", cfg.username, cfg.password).as_bytes(),
-  )?;
-  cmd_stdin(
-    &["chroot", target, "chpasswd"],
-    format!("root:{}\n", cfg.root_password).as_bytes(),
-  )?;
-
-  // ── 17. Omybuntu language preference ─────────────────────────────────────
-  prog(tx, 86, "Saving language preference...");
-  let cfg_dir = format!("{target}/home/{}/.config/omybuntu", cfg.username);
-  std::fs::create_dir_all(&cfg_dir).ok();
-  write_file(&format!("{cfg_dir}/language"), &cfg.language)?;
-  let _ = Command::new("chroot")
-    .args([target, "chown", "-R",
-      &format!("{}:{}", cfg.username, cfg.username),
-      &format!("/home/{}", cfg.username),
+        "PATH=/opt/omyvoid/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "OMYVOID_PATH=/opt/omyvoid",
+        "OMYVOID_INSTALL=/opt/omyvoid/install",
+        "OMYVOID_INSTALL_LOG_FILE=/var/log/omyvoid-install.log",
+        "OMYVOID_CHROOT_INSTALL=true",
+        &language,
+        &target_user,
+        &encrypted,
+        "/bin/bash",
+        "-e",
+        "-c",
+        "cd /opt/omyvoid && ./install.sh",
     ])
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .status();
-  configure_target_login(target, &cfg.username, cfg.encrypt)?;
-  if std::path::Path::new("/run/omybuntu-installer/partition-table.gpt").is_file() {
-    std::fs::create_dir_all(format!("{target}/var/log")).ok();
-    let _ = std::fs::copy(
-      "/run/omybuntu-installer/partition-table.gpt",
-      format!("{target}/var/log/omybuntu-partition-table.gpt"),
-    );
-  }
+}
 
-  // ── 18. GRUB ─────────────────────────────────────────────────────────────
-  prog(tx, 87, "Preparing the signed Secure Boot chain...");
-  ensure_secure_boot_packages(target, cfg.offline)?;
-  if let StoragePlan::AlongsideWindows { esp_uuid, .. } = &cfg.storage {
-    configure_windows_grub(target, esp_uuid)?;
-  }
-  if !cfg.mok_password.is_empty() {
-    prog(tx, 88, "Preparing Machine Owner Key enrollment...");
-    configure_mok(target, &cfg.mok_password)?;
-  }
-
-  prog(tx, 89, "Installing signed GRUB bootloader...");
-  if cfg.encrypt {
-    let grub_default = std::fs::read_to_string(format!("{target}/etc/default/grub")).unwrap_or_default();
-    if !grub_default.contains("GRUB_ENABLE_CRYPTODISK") {
-      write_file(
-        &format!("{target}/etc/default/grub"),
-        &format!("{grub_default}\nGRUB_ENABLE_CRYPTODISK=y\n"),
-      )?;
+fn run_install(cfg: &InstallConfig, tx: &Sender<InstallMessage>) -> Result<(), String> {
+    if !Path::new("/sys/firmware/efi").is_dir() {
+        return Err("Omyvoid requires UEFI boot mode".into());
     }
-  }
-  cmd(&[
-    "chroot", target, "grub-install",
-    "--target=x86_64-efi",
-    "--efi-directory=/boot/efi",
-    "--bootloader-id=Omybuntu",
-    "--uefi-secure-boot",
-    "--recheck",
-  ])?;
-  verify_signed_boot_chain(target)?;
+    if secure_boot_enabled() {
+        return Err("Disable Secure Boot before installing Omyvoid".into());
+    }
 
-  prog(tx, 92, "Applying GRUB theme in selected language...");
-  let refresh_grub = format!(
-    "OMYBUNTU_LANGUAGE={} OMYBUNTU_PATH=/opt/omybuntu /opt/omybuntu/bin/omybuntu-refresh-grub",
-    cfg.language,
-  );
-  cmd(&["chroot", target, "bash", "-c", &refresh_grub])?;
+    let disk = cfg.storage.disk().to_string();
+    progress(tx, 3, "Validating the selected GPT layout...");
+    let (boot_partition, root_partition, windows_uuid) = create_partitions(&cfg.storage)?;
+    let cleanup = TargetCleanup {
+        encrypted: cfg.encrypt,
+    };
 
-  // ── 19. initramfs ─────────────────────────────────────────────────────────
-  prog(tx, 96, "Updating initramfs...");
-  cmd(&["chroot", target, "update-initramfs", "-u", "-k", "all"])?;
+    progress(tx, 12, "Creating FAT32 boot and Btrfs root filesystems...");
+    let (root_device, luks_uuid) = create_filesystems(
+        &boot_partition,
+        &root_partition,
+        cfg.encrypt,
+        &cfg.luks_pass,
+    )?;
+    progress(tx, 20, "Creating the Omyvoid Btrfs subvolume layout...");
+    mount_layout(&root_device, &boot_partition)?;
 
-  // ── 20. Unmount ───────────────────────────────────────────────────────────
-  prog(tx, 98, "Unmounting filesystems...");
-  // Unmount virtual filesystems first (chroot must not be busy)
-  unmount_virtual_fs(target);
-  for mp in &["/boot/efi", "/home", "/.snapshots", ""] {
-    let path = format!("{target}{mp}");
-    silent_cmd(&["umount", "-lf", &path]);
-  }
-  if cfg.encrypt {
-    silent_cmd(&["cryptsetup", "close", "omybuntu_crypt"]);
-  }
+    progress(
+        tx,
+        30,
+        if cfg.offline {
+            "Installing Void from the ISO repository..."
+        } else {
+            "Installing Void from signed online repositories..."
+        },
+    );
+    let repositories = repository_list(cfg.offline)?;
+    xbps_install(
+        TARGET,
+        &repositories,
+        &["base-system".into(), "linux".into()],
+    )?;
+    write_xbps_repositories()?;
+    copy_omyvoid_source()?;
+    let packages = packages_from_manifest()?;
+    xbps_install(TARGET, &repositories, &packages)?;
 
-  prog(tx, 100, "Installation complete!");
-  Ok(())
+    progress(
+        tx,
+        58,
+        "Mounting the target runtime and writing system configuration...",
+    );
+    mount_virtual_filesystems()?;
+    let root_uuid = filesystem_uuid(&root_device)?;
+    let boot_uuid = filesystem_uuid(&boot_partition)?;
+    configure_identity(cfg, &root_uuid, &boot_uuid)?;
+    if let Some(uuid) = luks_uuid.as_deref() {
+        write_file(
+            format!("{TARGET}/etc/crypttab"),
+            format!("omyvoid_crypt UUID={uuid} none luks,discard\n"),
+        )?;
+    }
+    configure_limine_source(&root_uuid, luks_uuid.as_deref(), windows_uuid.as_deref())?;
+
+    progress(
+        tx,
+        68,
+        "Applying the Omyvoid desktop and runit configuration...",
+    );
+    run_omyvoid_install(cfg)?;
+    chroot(&[
+        "chown",
+        "-R",
+        &format!("{}:{}", cfg.username, cfg.username),
+        &format!("/home/{}", cfg.username),
+    ])?;
+
+    if Path::new("/run/omyvoid-installer/partition-table.gpt").is_file() {
+        fs::create_dir_all(format!("{TARGET}/var/log")).ok();
+        let _ = fs::copy(
+            "/run/omyvoid-installer/partition-table.gpt",
+            format!("{TARGET}/var/log/omyvoid-partition-table.gpt"),
+        );
+    }
+
+    progress(
+        tx,
+        86,
+        "Reconfiguring Void kernels and generating Omyvoid UKIs...",
+    );
+    chroot(&["xbps-reconfigure", "-fa"])?;
+    chroot(&["omyvoid", "boot", "repair"])?;
+    chroot(&["omyvoid", "snapshot", "create"])?;
+
+    progress(tx, 97, "Synchronizing data and unmounting the target...");
+    command(&["sync"])?;
+    drop(cleanup);
+    progress(
+        tx,
+        100,
+        format!("Omyvoid installation on {disk} is complete"),
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn partition_paths_cover_nvme_and_scsi() {
+        assert_eq!(partition_path("/dev/nvme0n1", 3), "/dev/nvme0n1p3");
+        assert_eq!(partition_path("/dev/sda", 3), "/dev/sda3");
+    }
+
+    #[test]
+    fn fstab_contains_every_required_subvolume() {
+        let generated = fstab("ROOT", "BOOT");
+        for expected in [
+            "subvol=@",
+            "subvol=@home",
+            "subvol=@log",
+            "subvol=@xbps",
+            "subvol=@snapshots",
+        ] {
+            assert!(generated.contains(expected));
+        }
+        assert!(generated.contains("UUID=BOOT /boot vfat"));
+        assert!(!generated.contains("swap"));
+    }
+
+    #[test]
+    fn install_config_debug_redacts_secrets() {
+        let config = InstallConfig {
+            storage: StoragePlan::EraseDisk {
+                disk: "/dev/test".into(),
+            },
+            encrypt: true,
+            luks_pass: "luks-secret".into(),
+            hostname: "omyvoid".into(),
+            username: "void".into(),
+            password: "user-secret".into(),
+            root_password: "root-secret".into(),
+            language: "en".into(),
+            locale: "en_US.UTF-8".into(),
+            keymap: "us".into(),
+            timezone: "UTC".into(),
+            offline: true,
+        };
+        let debug = format!("{config:?}");
+        assert!(!debug.contains("luks-secret"));
+        assert!(!debug.contains("user-secret"));
+        assert!(!debug.contains("root-secret"));
+    }
 }

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# omyvoid:summary=Reinstall Omyvoid packages and reset default configs
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Attempt to reinstall all default Omyvoid packages and reset all the default configs.
+
+echo -e "This will reinstall all the default Omyvoid packages and reset all default configs.\nWarning: All user changes to configs will be lost.\n"
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if gum confirm "$I18N_REINSTALL_WARN"; then
+  omyvoid-reinstall-git
+  omyvoid-reinstall-pkgs
+  omyvoid-reinstall-configs
+
+  gum confirm "$I18N_REINSTALL_DONE" && omyvoid-system-reboot
+fi

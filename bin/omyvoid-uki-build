@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# omyvoid:summary=Build one Omyvoid UKI from a Void kernel and dracut initramfs
+# omyvoid:group=boot
+# omyvoid:name=uki-build
+# omyvoid:args=<output.efi> <kernel-version> <kernel-command-line> [hostonly]
+# omyvoid:hidden=true
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+(( EUID == 0 )) || exec sudo "$0" "$@"
+
+output=${1:?UKI output path is required}
+kernel=${2:?kernel version is required}
+cmdline=${3:?kernel command line is required}
+hostonly=${4:-yes}
+linux="/boot/vmlinuz-$kernel"
+stub=/usr/lib/systemd/boot/efi/linuxx64.efi.stub
+
+[[ -f $linux ]] || {
+  echo "Kernel image not found: $linux" >&2
+  exit 1
+}
+[[ -f $stub ]] || {
+  echo "Void EFI stub not found: $stub (install dracut-uefi)" >&2
+  exit 1
+}
+command -v ukify >/dev/null || {
+  echo "ukify is required to build Omyvoid UKIs" >&2
+  exit 1
+}
+
+initrd=$(mktemp /run/omyvoid-initramfs.XXXXXX)
+temporary_output=$(mktemp "$(dirname "$output")/.omyvoid-uki.XXXXXX")
+cleanup() {
+  rm -f "$initrd" "$temporary_output"
+}
+trap cleanup EXIT
+
+dracut_args=(--force)
+[[ $hostonly == "no" ]] && dracut_args+=(--no-hostonly)
+dracut "${dracut_args[@]}" "$initrd" "$kernel"
+
+ukify build \
+  --linux="$linux" \
+  --initrd="$initrd" \
+  --cmdline="$cmdline" \
+  --os-release=@/etc/os-release \
+  --uname="$kernel" \
+  --stub="$stub" \
+  --output="$temporary_output"
+
+chmod 0644 "$temporary_output"
+mv -f "$temporary_output" "$output"
+trap - EXIT

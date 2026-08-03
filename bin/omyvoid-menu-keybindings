@@ -1,0 +1,519 @@
+#!/bin/bash
+
+# omyvoid:summary=Display Hyprland keybindings defined in your configuration using walker for an interactive search menu.
+
+declare -A KEYCODE_SYM_MAP
+# Hyprland reports XKB keycodes for code: bindings. Keep a small fallback for
+# common keys so the menu remains readable if xkbcli cannot resolve a symbol.
+declare -A FALLBACK_KEYCODE_SYM_MAP=(
+  [10]="1"
+  [11]="2"
+  [12]="3"
+  [13]="4"
+  [14]="5"
+  [15]="6"
+  [16]="7"
+  [17]="8"
+  [18]="9"
+  [19]="0"
+  [20]="MINUS"
+  [21]="EQUAL"
+  [61]="SLASH"
+)
+
+# Hyprland's Lua config provider currently reports code:... binds from hl.bind()
+# as key="" and keycode=0 in `hyprctl -j binds`. Keep a lightweight
+# source-derived key cache so the menu can still show those bindings.
+declare -A LUA_BIND_KEY_MAP
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+
+build_keymap_cache() {
+  local keymap
+  keymap="$(xkbcli compile-keymap)" || {
+    echo "Failed to compile keymap" >&2
+    return 1
+  }
+
+  while IFS=, read -r code sym; do
+    [[ -z $code || -z $sym ]] && continue
+    KEYCODE_SYM_MAP["$code"]="$sym"
+  done < <(
+    awk '
+      BEGIN { sec = "" }
+      /xkb_keycodes/ { sec = "codes"; next }
+      /xkb_symbols/  { sec = "syms";  next }
+      sec == "codes" {
+        if (match($0, /<([A-Za-z0-9_]+)>\s*=\s*([0-9]+)\s*;/, m)) code_by_name[m[1]] = m[2]
+      }
+      sec == "syms" {
+        if (match($0, /key\s*<([A-Za-z0-9_]+)>\s*\{\s*\[\s*([^, \]]+)/, m)) sym_by_name[m[1]] = m[2]
+      }
+      END {
+        for (k in code_by_name) {
+          c = code_by_name[k]
+          s = sym_by_name[k]
+          if (c != "" && s != "" && s != "NoSymbol") print c "," s
+        }
+      }
+    ' <<<"$keymap"
+  )
+}
+
+lookup_keycode_cached() {
+  local symbol
+  symbol="${KEYCODE_SYM_MAP[$1]}"
+
+  if [[ -z $symbol ]]; then
+    symbol="${FALLBACK_KEYCODE_SYM_MAP[$1]}"
+  fi
+
+  if [[ -z $symbol ]]; then
+    symbol="code:$1"
+  fi
+
+  printf '%s\n' "${symbol^^}"
+}
+
+parse_keycodes() {
+  local start end elapsed
+  [[ ${DEBUG:-0} == "1" ]] && start=$(date +%s.%N)
+  while IFS= read -r line; do
+    if [[ $line =~ code:([0-9]+) ]]; then
+      code="${BASH_REMATCH[1]}"
+      if [[ $code == "201" ]]; then
+        echo "${line/SUPER SHIFT,code:201/,COPILOT KEY}"
+      else
+        symbol=$(lookup_keycode_cached "$code" "$XKB_KEYMAP_CACHE")
+        echo "${line/code:${code}/$symbol}"
+      fi
+    elif [[ $line =~ mouse:([0-9]+) ]]; then
+      code="${BASH_REMATCH[1]}"
+
+      case "$code" in
+        272) symbol="LEFT MOUSE BUTTON" ;;
+        273) symbol="RIGHT MOUSE BUTTON" ;;
+        274) symbol="MIDDLE MOUSE BUTTON" ;;
+        *)   symbol="mouse:${code}" ;;
+      esac
+
+      echo "${line/mouse:${code}/$symbol}"
+    else
+      echo "$line"
+    fi
+  done
+
+  if [[ $DEBUG == "1" ]]; then
+    end=$(date +%s.%N)
+    # fall back to awk if bc is missing
+    if command -v bc >/dev/null 2>&1; then
+      elapsed=$(echo "$end - $start" | bc)
+    else
+      elapsed=$(awk -v s="$start" -v e="$end" 'BEGIN{printf "%.6f", (e - s)}')
+    fi
+    echo "[DEBUG] parse_keycodes elapsed: ${elapsed}s" >&2
+  fi
+}
+
+# Supplement `hyprctl -j binds` for Lua-only binds that Hyprland currently
+# reports without their original key, such as hl.bind("SUPER + code:10", ...).
+build_lua_bind_key_cache() {
+  # Lua configuration is obsolete; Omyvoid uses .conf files
+  return 0
+}
+
+modmask_to_text() {
+  case "$1" in
+    0)  printf '' ;;
+    1)  printf 'SHIFT' ;;
+    4)  printf 'CTRL' ;;
+    5)  printf 'SHIFT CTRL' ;;
+    8)  printf 'ALT' ;;
+    9)  printf 'SHIFT ALT' ;;
+    12) printf 'CTRL ALT' ;;
+    13) printf 'SHIFT CTRL ALT' ;;
+    64) printf 'SUPER' ;;
+    65) printf 'SUPER SHIFT' ;;
+    68) printf 'SUPER CTRL' ;;
+    69) printf 'SUPER SHIFT CTRL' ;;
+    72) printf 'SUPER ALT' ;;
+    73) printf 'SUPER SHIFT ALT' ;;
+    76) printf 'SUPER CTRL ALT' ;;
+    77) printf 'SUPER SHIFT CTRL ALT' ;;
+    *)  printf '%s' "$1" ;;
+  esac
+}
+
+# Fetch dynamic keybindings from Hyprland.
+#
+# Also do some pre-processing:
+# - Fill missing Lua code:... keys from the Lua source cache
+# - Remove standard Omyvoid bin path prefix
+# - Map numeric modifier key mask to a textual rendition
+# - Output comma-separated values that the parser can understand
+dynamic_bindings() {
+  local modmask key keycode description dispatcher arg modifiers
+
+  hyprctl -j binds |
+    jq -r '.[] | [.modmask, (.key // ""), (.keycode // 0), (.description // ""), (.dispatcher // ""), (.arg // "") | tostring] | join("\u001f")' |
+    while IFS=$'\x1f' read -r modmask key keycode description dispatcher arg; do
+      if [[ -z $key && $keycode != "0" ]]; then
+        key="code:$keycode"
+      fi
+
+      if [[ -z $key && -n $description ]]; then
+        key="${LUA_BIND_KEY_MAP["$modmask,$description"]}"
+      fi
+
+      [[ -z $description && $dispatcher == "__lua" ]] && continue
+
+      modifiers=$(modmask_to_text "$modmask")
+      arg="${arg//~\/.local\/share\/omyvoid\/bin\//}"
+      arg="${arg///}"
+      arg="${arg///}"
+
+      printf '%s,%s,%s,%s,%s\n' "$modifiers" "$key" "$description" "$dispatcher" "$arg"
+    done
+}
+
+# Hardcoded bindings, like the copy-url extension and such
+static_bindings() {
+  echo "SHIFT ALT,L,Copy URL from Web App,sendshortcut,SHIFT ALT,L,"
+}
+
+# Parse and format keybindings
+#
+# `awk` does the heavy lifting:
+# - Set the field separator to a comma ','.
+# - Joins the key combination (e.g., "SUPER + Q").
+# - Joins the command that the key executes.
+# - Prints display text and dispatch metadata as tab-separated fields.
+parse_binding_records() {
+  awk -F, '
+{
+    # Combine the modifier and key (first two fields)
+    key_combo = $1 " + " $2;
+
+    # Clean up: strip leading "+" if present, trim spaces
+    gsub(/^[ \t]*\+?[ \t]*/, "", key_combo);
+    gsub(/[ \t]+$/, "", key_combo);
+
+    # Use description, if set
+    action = $3;
+    dispatcher = $4;
+
+    # Reconstruct the dispatcher arg from the remaining fields
+    arg = "";
+    for (i = 5; i <= NF; i++) {
+        arg = arg $i (i < NF ? "," : "");
+    }
+
+    if (action == "") {
+        # Reconstruct the command from the remaining fields
+        for (i = 4; i <= NF; i++) {
+            action = action $i (i < NF ? "," : "");
+        }
+
+        # Clean up trailing commas, remove leading "exec, ", and trim
+        sub(/,$/, "", action);
+        gsub(/(^|,)[[:space:]]*exec[[:space:]]*,?/, "", action);
+        gsub(/^[ \t]+|[ \t]+$/, "", action);
+        gsub(/[ \t]+/, " ", key_combo);  # Collapse multiple spaces to one
+
+        # Escape XML entities
+        gsub(/&/, "\\&amp;", action);
+        gsub(/</, "\\&lt;", action);
+        gsub(/>/, "\\&gt;", action);
+        gsub(/"/, "\\&quot;", action);
+        gsub(/'"'"'/, "\\&apos;", action);
+    }
+
+    if (action != "") {
+        printf "%-35s → %s\t%s\t%s\n", key_combo, action, dispatcher, arg;
+    }
+}'
+}
+
+prioritize_entries() {
+  awk -F '\t' '
+  {
+    line = $1
+    prio = 50
+    if (match(line, /Terminal/)) prio = 0
+    if (match(line, /Tmux/)) prio = 1
+    if (match(line, /Browser/) && !match(line, /Browser[[:space:]]*\(/) && !match(line, /SUPER SHIFT.*\+.*B.*→.*Browser/)) prio = 2
+    if (match(line, /File manager/) && !match(line, /File manager \(cwd\)/))  prio = 3
+    if (match(line, /Launch apps/))  prio = 4
+    if (match(line, /Omyvoid menu/))  prio = 5
+    if (match(line, /System menu/))  prio = 6
+    if (match(line, /Theme menu/))  prio = 7
+    if (match(line, /Full screen/))  prio = 8
+    if (match(line, /Full width/))  prio = 9
+    if (match(line, /Close window/))  prio = 10
+    if (match(line, /Close all windows/))  prio = 11
+    if (match(line, /Lock system/))  prio = 12
+    if (match(line, /Toggle window floating/))  prio = 13
+    if (match(line, /Toggle window split/))  prio = 14
+    if (match(line, /Pop window/))  prio = 15
+    if (match(line, /Universal/))  prio = 16
+    if (match(line, /Clipboard/))  prio = 17
+    if (match(line, /Audio controls/))  prio = 18
+    if (match(line, /Bluetooth controls/))  prio = 19
+    if (match(line, /Wifi controls/))  prio = 20
+    if (match(line, /Emoji picker/))  prio = 21
+    if (match(line, /Color picker/))  prio = 22
+    if (match(line, /Screenshot/))  prio = 23
+    if (match(line, /Screenrecording/))  prio = 24
+    if (match(line, /SUPER SHIFT.*\+.*B.*→.*Browser/)) prio = 25
+    if (match(line, /File manager \(cwd\)/))  prio = 26
+    if (match(line, /(Switch|Next|Former|Previous).*workspace/))  prio = 27
+    if (match(line, /Move window to workspace/))  prio = 28
+    if (match(line, /Move window silently to workspace/))  prio = 29
+    if (match(line, /Swap window/))  prio = 30
+    if (match(line, /Focus/))  prio = 31
+    if (match(line, /Move window$/))  prio = 32
+    if (match(line, /Resize window/))  prio = 33
+    if (match(line, /Expand window/))  prio = 34
+    if (match(line, /Shrink window/))  prio = 35
+    if (match(line, /scratchpad/))  prio = 36
+    if (match(line, /notification/))  prio = 37
+    if (match(line, /Toggle window transparency/))  prio = 38
+    if (match(line, /Toggle workspace gaps/))  prio = 39
+    if (match(line, /Toggle nightlight/))  prio = 40
+    if (match(line, /Toggle locking/))  prio = 41
+    if (match(line, /group/))  prio = 94
+    if (match(line, /Scroll active workspace/))  prio = 95
+    if (match(line, /Cycle to/))  prio = 96
+    if (match(line, /Reveal active/))  prio = 97
+    if (match(line, /Apple Display/))  prio = 98
+    if (match(line, /XF86/))  prio = 99
+
+    # print "priority<TAB>record"
+    printf "%d\t%s\n", prio, $0
+  }' |
+  sort -k1,1n -k2,2 |
+  cut -f2-
+}
+
+translate_description() {
+  local desc="$1"
+  case "$desc" in
+    "Launch apps") echo "$I18N_KB_LAUNCH_APPS" ;;
+    "Emoji picker") echo "$I18N_KB_EMOJI_PICKER" ;;
+    "Capture menu") echo "$I18N_KB_CAPTURE_MENU" ;;
+    "Toggle menu") echo "$I18N_KB_TOGGLE_MENU" ;;
+    "Hardware menu") echo "$I18N_KB_HARDWARE_MENU" ;;
+    "Omyvoid menu") echo "$I18N_KB_OMYVOID_MENU" ;;
+    "System menu") echo "$I18N_KB_SYSTEM_MENU" ;;
+    "Power menu") echo "$I18N_KB_POWER_MENU" ;;
+    "Show key bindings") echo "$I18N_KB_SHOW_KEY_BINDINGS" ;;
+    "Show Tmux key bindings") echo "$I18N_KB_SHOW_TMUX_BINDINGS" ;;
+    "Calculator") echo "$I18N_KB_CALCULATOR" ;;
+    "Toggle top bar") echo "$I18N_KB_TOGGLE_TOP_BAR" ;;
+    "Move Waybar to top") echo "$I18N_KB_MOVE_WAYBAR_TOP" ;;
+    "Move Waybar to bottom") echo "$I18N_KB_MOVE_WAYBAR_BOTTOM" ;;
+    "Move Waybar to left") echo "$I18N_KB_MOVE_WAYBAR_LEFT" ;;
+    "Move Waybar to right") echo "$I18N_KB_MOVE_WAYBAR_RIGHT" ;;
+    "Background switcher") echo "$I18N_KB_BG_SWITCHER" ;;
+    "Theme background menu") echo "$I18N_KB_THEME_BG_MENU" ;;
+    "Theme menu") echo "$I18N_KB_THEME_MENU" ;;
+    "Toggle window transparency") echo "$I18N_KB_TOGGLE_TRANSPARENCY" ;;
+    "Toggle window gaps") echo "$I18N_KB_TOGGLE_GAPS" ;;
+    "Toggle single-window square aspect") echo "$I18N_KB_TOGGLE_SQUARE_ASPECT" ;;
+    "Dismiss last notification") echo "$I18N_KB_DISMISS_LAST_NOTIF" ;;
+    "Dismiss all notifications") echo "$I18N_KB_DISMISS_ALL_NOTIFS" ;;
+    "Toggle silencing notifications") echo "$I18N_KB_TOGGLE_SILENCING" ;;
+    "Invoke last notification") echo "$I18N_KB_INVOKE_LAST_NOTIF" ;;
+    "Restore last notification") echo "$I18N_KB_RESTORE_LAST_NOTIF" ;;
+    "Toggle locking on idle") echo "$I18N_KB_TOGGLE_LOCKING_IDLE" ;;
+    "Toggle nightlight") echo "$I18N_KB_TOGGLE_NIGHTLIGHT" ;;
+    "Toggle laptop display") echo "$I18N_KB_TOGGLE_LAPTOP_DISPLAY" ;;
+    "Toggle laptop display mirroring") echo "$I18N_KB_TOGGLE_MIRRORING" ;;
+    "Screenshot") echo "$I18N_KB_SCREENSHOT" ;;
+    "Screenrecording") echo "$I18N_KB_SCREENRECORDING" ;;
+    "Color picker") echo "$I18N_KB_COLOR_PICKER" ;;
+    "Extract text (OCR) from screenshot") echo "$I18N_KB_OCR" ;;
+    "Share") echo "$I18N_KB_SHARE" ;;
+    "Transcode") echo "$I18N_KB_TRANSCODE" ;;
+    "Set reminder") echo "$I18N_KB_SET_REMINDER" ;;
+    "Show reminders") echo "$I18N_KB_SHOW_REMINDERS" ;;
+    "Clear reminders") echo "$I18N_KB_CLEAR_REMINDERS" ;;
+    "Show time") echo "$I18N_KB_SHOW_TIME" ;;
+    "Show battery remaining") echo "$I18N_KB_SHOW_BATTERY" ;;
+    "Show weather") echo "$I18N_KB_SHOW_WEATHER" ;;
+    "Audio controls") echo "$I18N_KB_AUDIO_CONTROLS" ;;
+    "Bluetooth controls") echo "$I18N_KB_BLUETOOTH_CONTROLS" ;;
+    "Wifi controls") echo "$I18N_KB_WIFI_CONTROLS" ;;
+    "Activity") echo "$I18N_KB_ACTIVITY" ;;
+    "Toggle dictation") echo "$I18N_KB_TOGGLE_DICTATION" ;;
+    "Start dictation (push-to-talk)") echo "$I18N_KB_START_DICTATION" ;;
+    "Stop dictation (push-to-talk)") echo "$I18N_KB_STOP_DICTATION" ;;
+    "Zoom in") echo "$I18N_KB_ZOOM_IN" ;;
+    "Reset zoom") echo "$I18N_KB_RESET_ZOOM" ;;
+    "Lock system") echo "$I18N_KB_LOCK_SYSTEM" ;;
+    "Close window") echo "$I18N_KB_CLOSE_WINDOW" ;;
+    "Close all windows") echo "$I18N_KB_CLOSE_ALL_WINDOWS" ;;
+    "Toggle window split") echo "$I18N_KB_TOGGLE_SPLIT" ;;
+    "Pseudo window") echo "$I18N_KB_PSEUDO_WINDOW" ;;
+    "Toggle window floating/tiling") echo "$I18N_KB_TOGGLE_FLOATING" ;;
+    "Full screen") echo "$I18N_KB_FULL_SCREEN" ;;
+    "Tiled full screen") echo "$I18N_KB_TILED_FULL_SCREEN" ;;
+    "Full width") echo "$I18N_KB_FULL_WIDTH" ;;
+    "Pop window out (float & pin)") echo "$I18N_KB_POP_WINDOW" ;;
+    "Toggle workspace layout") echo "$I18N_KB_TOGGLE_LAYOUT" ;;
+    "Focus on left window") echo "$I18N_KB_FOCUS_LEFT" ;;
+    "Focus on right window") echo "$I18N_KB_FOCUS_RIGHT" ;;
+    "Focus on above window") echo "$I18N_KB_FOCUS_ABOVE" ;;
+    "Focus on below window") echo "$I18N_KB_FOCUS_BELOW" ;;
+    "Toggle scratchpad") echo "$I18N_KB_TOGGLE_SCRATCHPAD" ;;
+    "Move window to scratchpad") echo "$I18N_KB_MOVE_SCRATCHPAD" ;;
+    "Next workspace") echo "$I18N_KB_NEXT_WORKSPACE" ;;
+    "Previous workspace") echo "$I18N_KB_PREV_WORKSPACE" ;;
+    "Former workspace") echo "$I18N_KB_FORMER_WORKSPACE" ;;
+    "Move workspace to left monitor") echo "$I18N_KB_MOVE_WS_LEFT_MON" ;;
+    "Move workspace to right monitor") echo "$I18N_KB_MOVE_WS_RIGHT_MON" ;;
+    "Move workspace to up monitor") echo "$I18N_KB_MOVE_WS_UP_MON" ;;
+    "Move workspace to down monitor") echo "$I18N_KB_MOVE_WS_DOWN_MON" ;;
+    "Swap window to the left") echo "$I18N_KB_SWAP_LEFT" ;;
+    "Swap window to the right") echo "$I18N_KB_SWAP_RIGHT" ;;
+    "Swap window up") echo "$I18N_KB_SWAP_UP" ;;
+    "Swap window down") echo "$I18N_KB_SWAP_DOWN" ;;
+    "Focus on next window") echo "$I18N_KB_FOCUS_NEXT_WIN" ;;
+    "Focus on previous window") echo "$I18N_KB_FOCUS_PREV_WIN" ;;
+    "Reveal active window on top") echo "$I18N_KB_REVEAL_ACTIVE" ;;
+    "Focus on next monitor") echo "$I18N_KB_FOCUS_NEXT_MON" ;;
+    "Focus on previous monitor") echo "$I18N_KB_FOCUS_PREV_MON" ;;
+    "Expand window left") echo "$I18N_KB_EXPAND_LEFT" ;;
+    "Shrink window left") echo "$I18N_KB_SHRINK_LEFT" ;;
+    "Shrink window up") echo "$I18N_KB_SHRINK_UP" ;;
+    "Expand window down") echo "$I18N_KB_EXPAND_DOWN" ;;
+    "Expand window left a little") echo "$I18N_KB_EXPAND_LEFT_LITTLE" ;;
+    "Shrink window left a little") echo "$I18N_KB_SHRINK_LEFT_LITTLE" ;;
+    "Shrink window up a little") echo "$I18N_KB_SHRINK_UP_LITTLE" ;;
+    "Expand window down a little") echo "$I18N_KB_EXPAND_DOWN_LITTLE" ;;
+    "Expand window left a lot") echo "$I18N_KB_EXPAND_LEFT_LOT" ;;
+    "Shrink window left a lot") echo "$I18N_KB_SHRINK_LEFT_LOT" ;;
+    "Shrink window up a lot") echo "$I18N_KB_SHRINK_UP_LOT" ;;
+    "Expand window down a lot") echo "$I18N_KB_EXPAND_DOWN_LOT" ;;
+    "Scroll active workspace forward") echo "$I18N_KB_SCROLL_WS_FWD" ;;
+    "Scroll active workspace backward") echo "$I18N_KB_SCROLL_WS_BCK" ;;
+    "Toggle window grouping") echo "$I18N_KB_TOGGLE_GROUP" ;;
+    "Move active window out of group") echo "$I18N_KB_MOVE_OUT_GROUP" ;;
+    "Move window to group on left") echo "$I18N_KB_MOVE_GROUP_LEFT" ;;
+    "Move window to group on right") echo "$I18N_KB_MOVE_GROUP_RIGHT" ;;
+    "Move window to group on top") echo "$I18N_KB_MOVE_GROUP_TOP" ;;
+    "Move window to group on bottom") echo "$I18N_KB_MOVE_GROUP_BOTTOM" ;;
+    "Next window in group") echo "$I18N_KB_NEXT_WIN_GROUP" ;;
+    "Previous window in group") echo "$I18N_KB_PREV_WIN_GROUP" ;;
+    "Move grouped window focus left") echo "$I18N_KB_MOVE_GROUP_FOCUS_LEFT" ;;
+    "Move grouped window focus right") echo "$I18N_KB_MOVE_GROUP_FOCUS_RIGHT" ;;
+    "Cycle monitor scaling") echo "$I18N_KB_CYCLE_SCALING" ;;
+    "Cycle monitor scaling backwards") echo "$I18N_KB_CYCLE_SCALING_BACK" ;;
+    "Universal copy") echo "$I18N_KB_UNIVERSAL_COPY" ;;
+    "Universal paste") echo "$I18N_KB_UNIVERSAL_PASTE" ;;
+    "Universal cut") echo "$I18N_KB_UNIVERSAL_CUT" ;;
+    "Clipboard manager") echo "$I18N_KB_CLIPBOARD_MGR" ;;
+    "Volume up") echo "$I18N_KB_VOLUME_UP" ;;
+    "Volume down") echo "$I18N_KB_VOLUME_DOWN" ;;
+    "Mute") echo "$I18N_KB_MUTE" ;;
+    "Mute microphone") echo "$I18N_KB_MUTE_MIC" ;;
+    "Brightness up") echo "$I18N_KB_BRIGHTNESS_UP" ;;
+    "Brightness down") echo "$I18N_KB_BRIGHTNESS_DOWN" ;;
+    "Brightness maximum") echo "$I18N_KB_BRIGHTNESS_MAX" ;;
+    "Brightness minimum") echo "$I18N_KB_BRIGHTNESS_MIN" ;;
+    "Keyboard brightness up") echo "$I18N_KB_KBD_BRIGHTNESS_UP" ;;
+    "Keyboard brightness down") echo "$I18N_KB_KBD_BRIGHTNESS_DOWN" ;;
+    "Keyboard backlight cycle") echo "$I18N_KB_KBD_BACKLIGHT_CYCLE" ;;
+    "Toggle touchpad") echo "$I18N_KB_TOGGLE_TOUCHPAD" ;;
+    "Enable touchpad") echo "$I18N_KB_ENABLE_TOUCHPAD" ;;
+    "Disable touchpad") echo "$I18N_KB_DISABLE_TOUCHPAD" ;;
+    "Volume up precise") echo "$I18N_KB_VOLUME_UP_PRECISE" ;;
+    "Volume down precise") echo "$I18N_KB_VOLUME_DOWN_PRECISE" ;;
+    "Brightness up precise") echo "$I18N_KB_BRIGHTNESS_UP_PRECISE" ;;
+    "Brightness down precise") echo "$I18N_KB_BRIGHTNESS_DOWN_PRECISE" ;;
+    "Next track") echo "$I18N_KB_NEXT_TRACK" ;;
+    "Pause") echo "$I18N_KB_PAUSE" ;;
+    "Play") echo "$I18N_KB_PLAY" ;;
+    "Previous track") echo "$I18N_KB_PREV_TRACK" ;;
+    "Switch audio output") echo "$I18N_KB_SWITCH_AUDIO" ;;
+    "Copy URL from Web App") echo "$I18N_KB_COPY_URL" ;;
+    *)
+      if [[ "$desc" =~ ^Switch\ to\ workspace\ ([0-9]+)$ ]]; then
+        printf "$I18N_KB_SWITCH_WORKSPACE" "${BASH_REMATCH[1]}"
+      elif [[ "$desc" =~ ^Move\ window\ to\ workspace\ ([0-9]+)$ ]]; then
+        printf "$I18N_KB_MOVE_WORKSPACE" "${BASH_REMATCH[1]}"
+      elif [[ "$desc" =~ ^Move\ window\ silently\ to\ workspace\ ([0-9]+)$ ]]; then
+        printf "$I18N_KB_MOVE_WORKSPACE_SILENT" "${BASH_REMATCH[1]}"
+      elif [[ "$desc" =~ ^Switch\ to\ group\ window\ ([0-9]+)$ ]]; then
+        printf "$I18N_KB_SWITCH_GROUP_WIN" "${BASH_REMATCH[1]}"
+      else
+        echo "$desc"
+      fi
+      ;;
+  esac
+}
+
+translate_binding_stream() {
+  local line modifiers key description dispatcher rest
+  while IFS=, read -r modifiers key description dispatcher rest; do
+    description=$(translate_description "$description")
+    printf '%s,%s,%s,%s,%s\n' "$modifiers" "$key" "$description" "$dispatcher" "$rest"
+  done
+}
+
+output_binding_records() {
+  build_keymap_cache
+  build_lua_bind_key_cache
+
+  {
+    dynamic_bindings
+    static_bindings
+  } |
+    sort -u |
+    translate_binding_stream |
+    parse_keycodes |
+    parse_binding_records |
+    prioritize_entries
+}
+
+output_keybindings() {
+  output_binding_records | cut -f1
+}
+
+dispatch_binding() {
+  local dispatcher="$1"
+  local arg="$2"
+
+  case "$dispatcher" in
+    exec)
+      [[ -n $arg ]] && hyprctl dispatch exec "$arg"
+      ;;
+    "") return 1 ;;
+    *)
+      if [[ -n $arg ]]; then
+        hyprctl dispatch "$dispatcher" "$arg"
+      else
+        hyprctl dispatch "$dispatcher"
+      fi
+      ;;
+  esac
+}
+
+if [[ $1 == "--print" || $1 == "-p" ]]; then
+  output_keybindings
+else
+  records=$(output_binding_records)
+  monitor_height=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .height')
+  menu_height=$((monitor_height * 40 / 100))
+  selection=$(cut -f1 <<<"$records" |
+    walker --dmenu -p "$I18N_MENU_KEYBINDINGS_PROMPT" --width 900 --height "$menu_height")
+
+  if [[ -n $selection ]]; then
+    record=$(awk -F '\t' -v selection="$selection" '$1 == selection { print; exit }' <<<"$records")
+    dispatcher=$(cut -f2 <<<"$record")
+    arg=$(cut -f3- <<<"$record")
+
+    dispatch_binding "$dispatcher" "$arg"
+  fi
+fi

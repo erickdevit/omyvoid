@@ -3,25 +3,25 @@ sudo ln -snf /usr/share/icons/Adwaita/symbolic/actions/go-previous-symbolic.svg 
 sudo ln -snf /usr/share/icons/Adwaita/symbolic/actions/go-next-symbolic.svg /usr/share/icons/Yaru/scalable/actions/go-next-symbolic.svg
 
 # Setup user theme folder
-mkdir -p ~/.config/omybuntu/themes
+mkdir -p ~/.config/omyvoid/themes
 
 # Chromium policy directory for theme
 sudo mkdir -p /etc/chromium/policies/managed
 sudo chmod a+rw /etc/chromium/policies/managed
 
 # Set initial theme
-omybuntu-theme-set "Omybuntu"
+omyvoid-theme-set "Omyvoid"
 rm -rf ~/.config/chromium/SingletonLock ~/.config/google-chrome/SingletonLock
 
 # Set specific app links for current theme
 mkdir -p ~/.config/btop/themes
-ln -snf ../../omybuntu/current/theme/btop.theme ~/.config/btop/themes/current.theme
+ln -snf ../../omyvoid/current/theme/btop.theme ~/.config/btop/themes/current.theme
 
 mkdir -p ~/.config/mako
-ln -snf ../omybuntu/current/theme/mako.ini ~/.config/mako/config
+ln -snf ../omyvoid/current/theme/mako.ini ~/.config/mako/config
 
 mkdir -p ~/.config/cava
-ln -snf ../omybuntu/current/theme/cava.ini ~/.config/cava/config
+ln -snf ../omyvoid/current/theme/cava.ini ~/.config/cava/config
 
 # Default Chromium to follow system appearance ("device") instead of dark
 sudo mkdir -p /usr/lib/chromium

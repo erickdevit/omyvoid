@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite the user config for hyprsunset with the Omyvoid default and restart the service.
+
+omyvoid-refresh-config hypr/hyprsunset.conf
+omyvoid-restart-hyprsunset

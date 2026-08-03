@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# omyvoid:summary=Install and configure Voxtype dictation
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
+
+# Install voxtype and configure it for use.
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if gum confirm "$I18N_VOXTYPE_WARN"; then
+  omyvoid-pkg-add wtype voxtype-bin
+
+  # Setup voxtype
+  mkdir -p ~/.config/voxtype
+  cp $OMYVOID_PATH/default/voxtype/config.toml ~/.config/voxtype/
+
+  voxtype setup --download --no-post-install
+  if omyvoid-hw-vulkan; then
+    voxtype setup gpu --enable || true
+  fi
+  service="$HOME/.config/service/voxtype"
+  mkdir -p "$service"
+  printf '#!/bin/sh\nexec voxtype 2>&1\n' > "$service/run"
+  chmod 0755 "$service/run"
+  sv up "$service" 2>/dev/null || true
+
+  omyvoid-hyprland-toggle voxtype on
+  omyvoid-restart-waybar
+  omyvoid-notification-send -g  "$I18N_VOXTYPE_READY" "$I18N_VOXTYPE_READY_MSG"
+  echo "✅ Success: Voxtype installed."
+fi

@@ -1,7 +1,7 @@
 start_log_output() {
   # When building the ISO from the host, the host-side tail -f handles progress display.
   # The in-chroot cursor monitor would produce garbled ANSI codes through the chroot pipe.
-  if [[ -n ${OMYBUNTU_ISO_HOST_PROGRESS:-} ]]; then
+  if [[ -n ${OMYVOID_ISO_HOST_PROGRESS:-} ]]; then
     return
   fi
 
@@ -22,7 +22,7 @@ start_log_output() {
 
     while true; do
       # Read the last N lines into an array
-      mapfile -t current_lines < <(tail -n $log_lines "$OMYBUNTU_INSTALL_LOG_FILE" 2>/dev/null)
+      mapfile -t current_lines < <(tail -n $log_lines "$OMYVOID_INSTALL_LOG_FILE" 2>/dev/null)
 
       # Build complete output buffer with escape sequences
       output=""
@@ -59,12 +59,12 @@ stop_log_output() {
 }
 
 start_install_log() {
-  sudo touch "$OMYBUNTU_INSTALL_LOG_FILE"
-  sudo chmod 666 "$OMYBUNTU_INSTALL_LOG_FILE"
+  sudo touch "$OMYVOID_INSTALL_LOG_FILE"
+  sudo chmod 666 "$OMYVOID_INSTALL_LOG_FILE"
 
-  export OMYBUNTU_START_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+  export OMYVOID_START_TIME=$(date '+%Y-%m-%d %H:%M:%S')
 
-  echo "=== Omybuntu Installation Started: $OMYBUNTU_START_TIME ===" >>"$OMYBUNTU_INSTALL_LOG_FILE"
+  echo "=== Omyvoid Installation Started: $OMYVOID_START_TIME ===" >>"$OMYVOID_INSTALL_LOG_FILE"
   start_log_output
 }
 
@@ -72,26 +72,26 @@ stop_install_log() {
   stop_log_output
   show_cursor
 
-  if [[ -n ${OMYBUNTU_INSTALL_LOG_FILE:-} ]]; then
-    OMYBUNTU_END_TIME=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "=== Omybuntu Installation Completed: $OMYBUNTU_END_TIME ===" >> "$OMYBUNTU_INSTALL_LOG_FILE"
-    echo "" >> "$OMYBUNTU_INSTALL_LOG_FILE"
-    echo "=== Installation Time Summary ===" >> "$OMYBUNTU_INSTALL_LOG_FILE"
+  if [[ -n ${OMYVOID_INSTALL_LOG_FILE:-} ]]; then
+    OMYVOID_END_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "=== Omyvoid Installation Completed: $OMYVOID_END_TIME ===" >> "$OMYVOID_INSTALL_LOG_FILE"
+    echo "" >> "$OMYVOID_INSTALL_LOG_FILE"
+    echo "=== Installation Time Summary ===" >> "$OMYVOID_INSTALL_LOG_FILE"
 
-    if [[ -n $OMYBUNTU_START_TIME ]]; then
-      OMYBUNTU_START_EPOCH=$(date -d "$OMYBUNTU_START_TIME" +%s)
-      OMYBUNTU_END_EPOCH=$(date -d "$OMYBUNTU_END_TIME" +%s)
-      OMYBUNTU_DURATION=$((OMYBUNTU_END_EPOCH - OMYBUNTU_START_EPOCH))
+    if [[ -n $OMYVOID_START_TIME ]]; then
+      OMYVOID_START_EPOCH=$(date -d "$OMYVOID_START_TIME" +%s)
+      OMYVOID_END_EPOCH=$(date -d "$OMYVOID_END_TIME" +%s)
+      OMYVOID_DURATION=$((OMYVOID_END_EPOCH - OMYVOID_START_EPOCH))
 
-      OMYBUNTU_MINS=$((OMYBUNTU_DURATION / 60))
-      OMYBUNTU_SECS=$((OMYBUNTU_DURATION % 60))
+      OMYVOID_MINS=$((OMYVOID_DURATION / 60))
+      OMYVOID_SECS=$((OMYVOID_DURATION % 60))
 
-      echo "Omybuntu:    ${OMYBUNTU_MINS}m ${OMYBUNTU_SECS}s" >> "$OMYBUNTU_INSTALL_LOG_FILE"
-      echo "Total:       ${OMYBUNTU_MINS}m ${OMYBUNTU_SECS}s" >> "$OMYBUNTU_INSTALL_LOG_FILE"
+      echo "Omyvoid:    ${OMYVOID_MINS}m ${OMYVOID_SECS}s" >> "$OMYVOID_INSTALL_LOG_FILE"
+      echo "Total:       ${OMYVOID_MINS}m ${OMYVOID_SECS}s" >> "$OMYVOID_INSTALL_LOG_FILE"
     fi
-    echo "=================================" >> "$OMYBUNTU_INSTALL_LOG_FILE"
+    echo "=================================" >> "$OMYVOID_INSTALL_LOG_FILE"
 
-    echo "Installation finished." >> "$OMYBUNTU_INSTALL_LOG_FILE"
+    echo "Installation finished." >> "$OMYVOID_INSTALL_LOG_FILE"
   fi
 }
 
@@ -100,18 +100,18 @@ run_logged() {
 
   export CURRENT_SCRIPT="$script"
 
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting: $script" >>"$OMYBUNTU_INSTALL_LOG_FILE"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting: $script" >>"$OMYVOID_INSTALL_LOG_FILE"
 
   # Use bash -c to create a clean subshell
-  bash -c "source '$script'" </dev/null >>"$OMYBUNTU_INSTALL_LOG_FILE" 2>&1
+  bash -c "source '$script'" </dev/null >>"$OMYVOID_INSTALL_LOG_FILE" 2>&1
 
   local exit_code=$?
 
   if (( exit_code == 0 )); then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Completed: $script" >>"$OMYBUNTU_INSTALL_LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Completed: $script" >>"$OMYVOID_INSTALL_LOG_FILE"
     unset CURRENT_SCRIPT
   else
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Failed: $script (exit code: $exit_code)" >>"$OMYBUNTU_INSTALL_LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Failed: $script (exit code: $exit_code)" >>"$OMYVOID_INSTALL_LOG_FILE"
   fi
 
   return $exit_code

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch a TUI command in the default terminal with Omyvoid styling
+# omyvoid:args=<command> [args...]
+
+exec setsid xdg-terminal-exec --app-id=org.omyvoid.$(basename $1) -e "$1" "${@:2}"

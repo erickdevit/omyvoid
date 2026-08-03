@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# omyvoid:summary=Apply an Omyvoid theme
+# omyvoid:args=<theme-name>
+# omyvoid:examples=omyvoid theme list | omyvoid theme set "Tokyo Night"
+
+if [[ -z $1 ]]; then
+  echo "Usage: omyvoid-theme-set <theme-name>"
+  exit 1
+fi
+
+CURRENT_THEME_PATH="$HOME/.config/omyvoid/current/theme"
+NEXT_THEME_PATH="$HOME/.config/omyvoid/current/next-theme"
+USER_THEMES_PATH="$HOME/.config/omyvoid/themes"
+OMYVOID_THEMES_PATH="$OMYVOID_PATH/themes"
+
+THEME_NAME=$(echo "$1" | sed -E 's/<[^>]+>//g' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+
+if [[ ! -d $OMYVOID_THEMES_PATH/$THEME_NAME ]] && [[ ! -d $USER_THEMES_PATH/$THEME_NAME ]]; then
+  echo "Theme '$THEME_NAME' does not exist"
+  exit 1
+fi
+
+# Setup clean next theme directory (for atomic theme config swapping)
+rm -rf "$NEXT_THEME_PATH"
+mkdir -p "$NEXT_THEME_PATH"
+
+# Copy official theme first, then overlay user customizations on top
+cp -r "$OMYVOID_THEMES_PATH/$THEME_NAME/"* "$NEXT_THEME_PATH/" 2>/dev/null
+cp -r "$USER_THEMES_PATH/$THEME_NAME/"* "$NEXT_THEME_PATH/" 2>/dev/null
+
+# Generate colors.toml from alacritty.toml if theme is missing colors.toml
+if [[ ! -f $NEXT_THEME_PATH/colors.toml && -f $NEXT_THEME_PATH/alacritty.toml ]]; then
+  omyvoid-theme-colors-from-alacritty "$NEXT_THEME_PATH"
+fi
+
+# Generate dynamic configs
+omyvoid-theme-set-templates
+
+# Swap next theme in as current
+rm -rf "$CURRENT_THEME_PATH"
+mv "$NEXT_THEME_PATH" "$CURRENT_THEME_PATH"
+
+# Store theme name for reference
+echo "$THEME_NAME" >"$HOME/.config/omyvoid/current/theme.name"
+
+# Change background with theme
+if [[ $OMYVOID_THEME_SKIP_BACKGROUND != "1" ]]; then
+  omyvoid-theme-bg-next
+fi
+
+# Restart components to apply new theme
+if pgrep -x waybar >/dev/null; then
+  omyvoid-restart-waybar
+fi
+omyvoid-restart-swayosd
+omyvoid-restart-terminal
+omyvoid-restart-hyprctl
+omyvoid-restart-btop
+omyvoid-restart-opencode
+omyvoid-restart-mako
+omyvoid-restart-helix
+# Change app-specific themes
+omyvoid-theme-set-foot
+omyvoid-theme-set-gnome
+omyvoid-theme-set-browser
+omyvoid-theme-set-vscode
+omyvoid-theme-set-obsidian
+omyvoid-theme-set-keyboard
+omyvoid-nvim-setup
+
+# Restart/Reload app themes
+omyvoid-restart-nvim
+
+# Call hook on theme set
+omyvoid-hook theme-set "$THEME_NAME" >/dev/null
+
+# Warm the background selector cache after the theme is applied, off the critical path.
+omyvoid-theme-bg-cache >/dev/null 2>&1 &

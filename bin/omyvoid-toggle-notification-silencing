@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle notification do-not-disturb mode
+
+makoctl mode -t do-not-disturb
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if makoctl mode | grep -q 'do-not-disturb'; then
+  omyvoid-notification-send -g 󰂛 "$I18N_TOG_NOTIFS_SILENT"
+else
+  omyvoid-notification-send -g 󰂚 "$I18N_TOG_NOTIFS_ENABLED"
+fi
+
+pkill -RTMIN+10 waybar

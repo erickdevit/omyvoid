@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# omyvoid:summary=Ensure all default .desktop, web apps, TUIs, and npm wrappers are installed.
+
+OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+
+mkdir -p ~/.local/share/icons/hicolor/48x48/apps/
+cp "$OMYVOID_PATH"/applications/icons/*.png ~/.local/share/icons/hicolor/48x48/apps/
+if omyvoid-cmd-present gtk-update-icon-cache; then
+  gtk-update-icon-cache --ignore-theme-index ~/.local/share/icons/hicolor &>/dev/null || true
+fi
+
+# Copy .desktop declarations
+mkdir -p ~/.local/share/applications
+cp "$OMYVOID_PATH"/applications/*.desktop ~/.local/share/applications/
+for desktop in "$OMYVOID_PATH"/applications/hidden/*.desktop; do
+  desktop_name=$(basename "$desktop")
+  if [[ $desktop_name == *ImageMagick* || $desktop_name == *imagemagick* || $desktop_name == display-im6* ]]; then
+    continue
+  fi
+  cp "$desktop" ~/.local/share/applications/
+done
+
+rm -f \
+  ~/.local/share/applications/display-im6*.desktop \
+  ~/.local/share/applications/*ImageMagick*.desktop \
+  ~/.local/share/applications/*imagemagick*.desktop
+
+if omyvoid-cmd-present alacritty; then
+  cp "$OMYVOID_PATH/default/alacritty/Alacritty.desktop" ~/.local/share/applications/
+fi
+
+# Refresh the webapps, TUIs, and npm wrappers
+bash "$OMYVOID_PATH/install/packaging/icons.sh"
+bash "$OMYVOID_PATH/install/packaging/webapps.sh"
+bash "$OMYVOID_PATH/install/packaging/tuis.sh"
+bash "$OMYVOID_PATH/install/packaging/npm.sh"
+
+update-desktop-database ~/.local/share/applications

@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# omyvoid:summary=Install a supported browser through XBPS
+# omyvoid:args=<chromium|firefox|chrome|brave|edge|zen>
+# omyvoid:examples=omyvoid install browser firefox | omyvoid install browser chrome
+
+set -euo pipefail
+
+browser=${1:-}
+case "$browser" in
+  chromium|firefox)
+    package=$browser
+    ;;
+  chrome)
+    package=google-chrome
+    ;;
+  brave)
+    package=brave-browser
+    ;;
+  edge)
+    package=microsoft-edge
+    ;;
+  zen)
+    package=zen-browser
+    ;;
+  *)
+    echo "Usage: omyvoid install browser <chromium|firefox|chrome|brave|edge|zen>" >&2
+    exit 2
+    ;;
+esac
+
+case "$package" in
+  chromium|firefox) omyvoid-pkg-add "$package" ;;
+  *) omyvoid-pkg-restricted-install "$package" ;;
+esac
+
+case "$package" in
+  firefox)
+    sudo install -d -m 0755 /usr/lib/firefox/distribution
+    sudo install -m 0644 "$OMYVOID_PATH/default/firefox/policies.json" /usr/lib/firefox/distribution/policies.json
+    ;;
+  chromium)
+    sudo install -d -m 0775 /etc/chromium/policies/managed
+    ;;
+esac
+
+mkdir -p "$HOME/.config/environment.d"
+printf 'MOZ_ENABLE_WAYLAND=1\n' > "$HOME/.config/environment.d/omyvoid-firefox-wayland.conf"
+omyvoid-theme-set-browser 2>/dev/null || true
+echo "Installed $browser through XBPS"

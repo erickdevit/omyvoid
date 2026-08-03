@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite the user config for hypridle with the Omyvoid default and restart the service.
+
+omyvoid-refresh-config hypr/hypridle.conf
+omyvoid-restart-hypridle

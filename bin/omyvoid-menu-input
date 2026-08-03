@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# omyvoid:summary=Prompt for text input with Walker
+# omyvoid:group=menu
+# omyvoid:name=input
+# omyvoid:args=prompt [walker args...]
+# omyvoid:examples=omyvoid menu input Reminder|omyvoid-menu-input "Reminder in minutes" --width 400
+
+set -euo pipefail
+
+prompt="${1:-Input}"
+if (( $# > 0 )); then
+  shift
+fi
+
+omyvoid-launch-walker --dmenu --inputonly --width 295 --minheight 1 --maxheight 1 -p "$prompt…" "$@" 2>/dev/null

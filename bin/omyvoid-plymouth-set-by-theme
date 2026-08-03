@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# omyvoid:summary=Set the Plymouth boot theme from an Omyvoid theme
+# omyvoid:args=<theme-name>
+# omyvoid:requires-sudo=true
+
+# Resolve a theme by name and apply its unlock.png + colors.toml as the
+# Plymouth boot screen via omyvoid-plymouth-set.
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: omyvoid-plymouth-set-by-theme <theme-name>" >&2
+  exit 1
+fi
+
+theme=$1
+
+if [[ -d ~/.config/omyvoid/themes/$theme ]]; then
+  theme_dir=~/.config/omyvoid/themes/$theme
+else
+  theme_dir="$OMYVOID_PATH/themes/$theme"
+fi
+
+bg=$(awk -F'"' '/^background/{print $2}' "$theme_dir/colors.toml")
+text=$(awk -F'"' '/^foreground/{print $2}' "$theme_dir/colors.toml")
+
+exec omyvoid-plymouth-set "$bg" "$text" "$theme_dir/unlock.png"

@@ -1,3 +1,3 @@
-if omybuntu-hw-framework16; then
-  omybuntu-pkg-add qmk-hid
+if omyvoid-hw-framework16; then
+  omyvoid-pkg-add qmk-hid
 fi

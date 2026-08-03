@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# omyvoid:summary=Remove Voxtype dictation and its configuration
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Remove voxtype and its configurations.
+
+if omyvoid-cmd-present voxtype; then
+  echo "Uninstall Voxtype to remove dictation."
+
+  sv down "$HOME/.config/service/voxtype" 2>/dev/null || true
+  rm -rf "$HOME/.config/service/voxtype"
+
+  # Remove packages and configs
+  omyvoid-pkg-drop voxtype-bin
+  rm -rf ~/.config/voxtype
+  rm -rf ~/.local/share/voxtype
+  omyvoid-hyprland-toggle voxtype off
+else
+  echo "Voxtype was not installed."
+fi

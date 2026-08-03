@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Show the current battery status notification
+
+omyvoid-notification-send -g 󰁹 -u low "$(omyvoid-battery-status)"

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# omyvoid:summary=Install Xbox Bluetooth controller support through XBPS
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+omyvoid-pkg-add xpadneo
+echo blacklist xpad | sudo tee /etc/modprobe.d/blacklist-xpad.conf >/dev/null
+echo hid_xpadneo | sudo tee /etc/modules-load.d/xpadneo.conf >/dev/null
+sudo usermod -aG input "$USER"
+sudo modprobe -r xpad 2>/dev/null || true
+sudo modprobe hid_xpadneo
+echo 'Xbox Bluetooth controller support installed through XBPS.'

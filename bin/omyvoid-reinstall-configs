@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# omyvoid:summary=Reset all Omyvoid user configs to the defaults
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Overwrite all user configs with the Omyvoid defaults.
+
+if (( EUID == 0 )); then
+  echo "Error: This script should not be run as root"
+  exit 1
+fi
+
+echo "Resetting all Omyvoid configs"
+cp -R ~/.local/share/omyvoid/config/* ~/.config/
+cp ~/.local/share/omyvoid/default/bashrc ~/.bashrc
+echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
+
+$(bash $OMYVOID_PATH/install/config/theme.sh)
+
+if omyvoid-cmd-present omyvoid-refresh-limine; then
+  omyvoid-refresh-limine
+fi
+omyvoid-refresh-plymouth
+omyvoid-nvim-setup

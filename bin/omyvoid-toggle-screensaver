@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle screensaver availability
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+omyvoid-toggle \
+  --enabled-notification "󱄄   $I18N_TOG_SCREENSAVER_OFF" \
+  --disabled-notification "󱄄   $I18N_TOG_SCREENSAVER_ON" \
+  screensaver-off

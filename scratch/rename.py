@@ -1,7 +1,7 @@
 import os
 import re
 
-TARGET_DIR = "/home/erick/repos/omybuntu"
+TARGET_DIR = "/home/erick/repos/omyvoid"
 
 def replace_text_in_file(filepath):
     # Skip binary files by trying to read as utf-8
@@ -15,9 +15,9 @@ def replace_text_in_file(filepath):
         return
 
     # Replace occurrences
-    new_content = content.replace("omarchy", "omybuntu")
-    new_content = new_content.replace("OMARCHY", "OMYBUNTU")
-    new_content = new_content.replace("Omarchy", "Omybuntu")
+    new_content = content.replace("omarchy", "omyvoid")
+    new_content = new_content.replace("OMARCHY", "OMYVOID")
+    new_content = new_content.replace("Omarchy", "Omyvoid")
 
     if new_content != content:
         try:
@@ -29,9 +29,9 @@ def replace_text_in_file(filepath):
 
 def get_new_name(name):
     # Replace omarchy variations in the name
-    new_name = name.replace("omarchy", "omybuntu")
-    new_name = new_name.replace("OMARCHY", "OMYBUNTU")
-    new_name = new_name.replace("Omarchy", "Omybuntu")
+    new_name = name.replace("omarchy", "omyvoid")
+    new_name = new_name.replace("OMARCHY", "OMYVOID")
+    new_name = new_name.replace("Omarchy", "Omyvoid")
     return new_name
 
 def process_directory(directory):

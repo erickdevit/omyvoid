@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# omyvoid:summary=Enable, disable, toggle, or recover mirroring the internal display to an external monitor
+# omyvoid:args=<on|off|toggle|recover>
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+TOGGLE="internal-monitor-mirror"
+TOGGLE_FLAG="$HOME/.local/state/omyvoid/toggles/hypr/$TOGGLE.conf"
+DISABLE_TOGGLE="internal-monitor-disable"
+
+# Get names dynamically
+INTERNAL=$(hyprctl monitors -j | jq -r '.[] | select(.name | contains("eDP")).name' | head -n 1)
+# Get the first available external monitor
+EXTERNAL=$(hyprctl monitors -j | jq -r '.[] | select(.name | contains("eDP") | not).name' | head -n 1)
+
+on() {
+  if [[ -z $EXTERNAL ]]; then
+    omyvoid-notification-send -g 󰍹 "$I18N_MON_MIRROR_NO_EXTERNAL"
+    exit 1
+  fi
+
+  if [[ -z $INTERNAL ]]; then
+    omyvoid-notification-send -g 󰍹 "$I18N_MON_MIRROR_NO_INTERNAL"
+    exit 1
+  fi
+
+  omyvoid-hyprland-toggle $DISABLE_TOGGLE off
+
+  if omyvoid-hyprland-toggle-disabled $TOGGLE; then
+    printf 'monitor = %s, preferred, auto, 1, mirror, %s\n' "$EXTERNAL" "$INTERNAL" >"$TOGGLE_FLAG"
+    omyvoid-notification-send -g 󰍹 "$(printf "$I18N_MON_MIRROR_ENABLED" "$EXTERNAL")"
+    hyprctl reload
+  fi
+}
+
+off() {
+  if omyvoid-hyprland-toggle-enabled $TOGGLE; then
+    omyvoid-hyprland-toggle $TOGGLE off
+    omyvoid-notification-send -g 󰍹 "$I18N_MON_MIRROR_EXTENDED_RESTORED"
+  fi
+}
+
+toggle() {
+  if omyvoid-hyprland-toggle-enabled $TOGGLE; then
+    off
+  else
+    on
+  fi
+}
+
+recover() {
+  if ! omyvoid-hw-external-monitors && omyvoid-hyprland-toggle-enabled $TOGGLE; then
+    omyvoid-hyprland-toggle $TOGGLE off
+  fi
+}
+
+case "$1" in
+  on) on ;;
+  off) off ;;
+  toggle) toggle ;;
+  recover) recover ;;
+  *)
+    echo "Usage: $(basename "$0") {on|off|toggle|recover}" >&2
+    exit 1
+    ;;
+esac

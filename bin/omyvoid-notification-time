@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Show the current time and date notification
+
+omyvoid-notification-send -g  -u low "$(date +"%A %H:%M  ·  %d %B %Y  ·  Week %V")"

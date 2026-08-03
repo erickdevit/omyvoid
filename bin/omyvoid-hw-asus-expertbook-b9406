@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Detect ASUS ExpertBook B9406 series laptops on Intel Panther Lake.
+
+omyvoid-hw-match "B9406" && omyvoid-hw-intel-ptl

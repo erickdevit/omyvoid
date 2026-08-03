@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# omyvoid:summary=Build and install an approved restricted XBPS template
+# omyvoid:group=pkg
+# omyvoid:name=restricted install
+# omyvoid:args=<package>
+# omyvoid:examples=omyvoid pkg restricted install google-chrome
+
+set -euo pipefail
+
+package=${1:-}
+[[ -n $package ]] || {
+  echo "Usage: omyvoid pkg restricted install <package>" >&2
+  exit 2
+}
+[[ $package =~ ^[a-z0-9][a-z0-9+._-]*$ ]] || {
+  echo "Invalid XBPS package name: $package" >&2
+  exit 2
+}
+(( EUID != 0 )) || {
+  echo "Run this command as a regular user; sudo is requested only for the final XBPS transaction." >&2
+  exit 1
+}
+
+allowlist=${OMYVOID_PATH:-/opt/omyvoid}/install/packaging/restricted.allowlist
+grep -Fxq "$package" "$allowlist" || {
+  echo "Restricted package is not approved by Omyvoid: $package" >&2
+  exit 1
+}
+
+if command -v gum >/dev/null; then
+  gum confirm "Build $package locally and accept its upstream license?" || exit 130
+else
+  read -r -p "Build $package locally and accept its upstream license? [y/N] " answer
+  [[ $answer == [yY] ]] || exit 130
+fi
+
+cache_root=${XDG_CACHE_HOME:-$HOME/.cache}/omyvoid
+void_packages=$cache_root/void-packages
+mkdir -p "$cache_root"
+if [[ -d $void_packages/.git ]]; then
+  git -C "$void_packages" pull --ff-only
+else
+  git clone --depth=1 https://github.com/void-linux/void-packages.git "$void_packages"
+fi
+
+printf 'XBPS_ALLOW_RESTRICTED=yes\n' > "$void_packages/etc/conf"
+overlay=${OMYVOID_PATH:-/opt/omyvoid}/xbps-src/srcpkgs/$package
+if [[ -d $overlay ]]; then
+  [[ $(dirname "$void_packages/srcpkgs/$package") == "$void_packages/srcpkgs" ]] || exit 1
+  rm -rf "$void_packages/srcpkgs/$package"
+  cp -a "$overlay" "$void_packages/srcpkgs/$package"
+fi
+
+(
+  cd "$void_packages"
+  ./xbps-src binary-bootstrap
+  ./xbps-src pkg "$package"
+)
+
+mapfile -t repositories < <(find "$void_packages/hostdir/binpkgs" -type f -name "${package}-*.xbps" -printf '%h\n' | sort -u)
+(( ${#repositories[@]} > 0 )) || {
+  echo "No XBPS package was produced for $package" >&2
+  exit 1
+}
+
+args=()
+for repository in "${repositories[@]}"; do
+  args+=(--repository "$repository")
+done
+sudo xbps-install -y "${args[@]}" "$package"

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# omyvoid:summary=Reinstall all default Omyvoid packages from the stable channel
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Update repository indexes
+sudo xbps-install -Sy
+
+# Ensure all base packages are installed and up to date
+mapfile -t packages < <(grep -v '^#' "$OMYVOID_PATH/install/omyvoid-base.packages" | grep -v '^$')
+sudo xbps-install -yf "${packages[@]}"

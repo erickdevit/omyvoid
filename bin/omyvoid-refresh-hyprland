@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite all the user Hyprland configs in ~/.config/hypr with the Omyvoid defaults.
+
+omyvoid-refresh-config hypr/autostart.conf
+omyvoid-refresh-config hypr/bindings.conf
+omyvoid-refresh-config hypr/envs.conf
+omyvoid-refresh-config hypr/input.conf
+omyvoid-refresh-config hypr/looknfeel.conf
+omyvoid-refresh-config hypr/hyprland.conf
+omyvoid-refresh-config hypr/monitors.conf
+omyvoid-refresh-config hypr/windows.conf
+omyvoid-refresh-config hypr/apps.conf
+bash "$OMYVOID_PATH/install/config/omyvoid-toggles.sh"
+bash "$OMYVOID_PATH/install/config/detect-keyboard-layout.sh"

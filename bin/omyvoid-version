@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# omyvoid:summary=Print the installed Omyvoid version
+
+OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+
+if [[ -f $OMYVOID_PATH/version ]]; then
+  cat "$OMYVOID_PATH/version"
+elif [[ -f $OMYVOID_PATH/.build-info ]]; then
+  awk -F= '$1 == "OMYVOID_BUILD_DESCRIBE" { print $2 }' "$OMYVOID_PATH/.build-info"
+else
+  echo "unknown"
+fi

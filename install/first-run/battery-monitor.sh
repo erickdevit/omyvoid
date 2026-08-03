@@ -1,8 +1,20 @@
-if omybuntu-battery-present; then
-  powerprofilesctl set balanced || true
+#!/bin/bash
 
-  # Enable battery monitoring timer for low battery notifications
-  systemctl --user enable --now omybuntu-battery-monitor.timer
+set -euo pipefail
+
+if omyvoid-battery-present; then
+  powerprofilesctl set balanced || true
+  service="$HOME/.config/service/omyvoid-battery"
+  mkdir -p "$service"
+  cat > "$service/run" <<'EOF'
+#!/bin/sh
+while :; do
+  omyvoid-battery-monitor
+  sleep 30
+done
+EOF
+  chmod 0755 "$service/run"
+  sv up "$service" 2>/dev/null || true
 else
   powerprofilesctl set performance || true
 fi

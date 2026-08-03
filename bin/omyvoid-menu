@@ -1,0 +1,1017 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch the Omyvoid Menu or takes a parameter to jump straight to a submenu.
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+# Set to true when going directly to a submenu, so we can exit directly
+BACK_TO_EXIT=false
+
+back_to() {
+  local parent_menu="$1"
+
+  if [[ $BACK_TO_EXIT == "true" ]]; then
+    exit 0
+  elif [[ -n $parent_menu ]]; then
+    "$parent_menu"
+  else
+    show_main_menu
+  fi
+}
+
+toggle_existing_menu() {
+  if pgrep -f "walker.*--dmenu" >/dev/null; then
+    walker --close >/dev/null 2>&1
+    exit 0
+  fi
+}
+
+menu() {
+  local prompt="$1"
+  local options="$2"
+  local extra="$3"
+  local preselect="$4"
+
+  read -r -a args <<<"$extra"
+
+  if [[ -n $preselect ]]; then
+    local index
+    index=$(echo -e "$options" | grep -nxF "$preselect" | cut -d: -f1)
+    if [[ -n $index ]]; then
+      args+=("-c" "$index")
+    fi
+  fi
+
+  echo -e "$options" | omyvoid-launch-walker --dmenu --width 295 --minheight 1 --maxheight 630 -p "$prompt…" "${args[@]}" 2>/dev/null
+}
+
+terminal() {
+  xdg-terminal-exec --app-id=org.omyvoid.terminal "$@"
+}
+
+present_terminal() {
+  omyvoid-launch-floating-terminal-with-presentation $1
+}
+
+open_in_editor() {
+  omyvoid-notification-send -u low "$I18N_MENU_EDITING_CONFIG" "$1"
+  omyvoid-launch-editor "$1"
+}
+
+hypr_config_file() {
+  local name="$1"
+  printf '%s/.config/hypr/%s.conf' "$HOME" "$name"
+}
+
+install() {
+  present_terminal "echo 'Installing $1...'; omyvoid-pkg-add $2"
+}
+
+install_and_launch() {
+  present_terminal "echo 'Installing $1...'; omyvoid-pkg-add $2 && setsid gtk-launch $3"
+}
+
+install_font() {
+  local font_family="$3"
+  present_terminal "echo 'Installing $1...'; omyvoid-pkg-add nerd-fonts-ttf && fc-cache -f && omyvoid-font-set '$font_family'"
+}
+
+install_terminal() {
+  present_terminal "omyvoid-install-terminal $1"
+}
+
+pkg_install() {
+  present_terminal "echo 'Installing $1...'; omyvoid-pkg-add $2"
+}
+
+pkg_install_and_launch() {
+  present_terminal "echo 'Installing $1...'; omyvoid-pkg-add $2 && setsid gtk-launch $3"
+}
+
+show_learn_menu() {
+  case $(menu "$I18N_MENU_LEARN" "$I18N_LEARN_KEYBINDINGS\n$I18N_LEARN_TMUX\n$I18N_LEARN_OMYVOID\n$I18N_LEARN_HYPRLAND\n$I18N_LEARN_VOID\n$I18N_LEARN_NEOVIM\n$I18N_LEARN_BASH") in
+  *"$I18N_LEARN_TMUX"*) omyvoid-menu-tmux-keybindings ;;
+  *"$I18N_LEARN_KEYBINDINGS"*) omyvoid-menu-keybindings ;;
+  *"$I18N_LEARN_OMYVOID"*) omyvoid-launch-webapp "https://learn.omacom.io/2/the-omyvoid-manual" ;;
+  *"$I18N_LEARN_HYPRLAND"*) omyvoid-launch-webapp "https://wiki.hypr.land/" ;;
+  *"$I18N_LEARN_VOID"*) omyvoid-launch-webapp "https://docs.voidlinux.org/" ;;
+  *"$I18N_LEARN_BASH"*) omyvoid-launch-webapp "https://devhints.io/bash" ;;
+  *"$I18N_LEARN_NEOVIM"*) omyvoid-launch-webapp "https://www.lazyvim.org/keymaps" ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_trigger_menu() {
+  case $(menu "$I18N_MENU_TRIGGER" "$I18N_TRIG_REMINDER\n$I18N_TRIG_CAPTURE\n$I18N_TRIG_TRANSCODE\n$I18N_TRIG_SHARE\n$I18N_TRIG_TOGGLE\n$I18N_TRIG_MONITORS_TUI\n$I18N_TRIG_PROJECT\n$I18N_TRIG_HARDWARE") in
+  *"$I18N_TRIG_REMINDER"*) show_reminder_menu ;;
+  *"$I18N_TRIG_CAPTURE"*) show_capture_menu ;;
+  *"$I18N_TRIG_TRANSCODE"*) omyvoid-transcode || back_to show_trigger_menu ;;
+  *"$I18N_TRIG_SHARE"*) show_share_menu ;;
+  *"$I18N_TRIG_TOGGLE"*) show_toggle_menu ;;
+  *"$I18N_TRIG_MONITORS_TUI"*) omyvoid-launch-tui omyvoid-tui-monitors ;;
+  *"$I18N_TRIG_PROJECT"*) show_project_menu ;;
+  *"$I18N_TRIG_HARDWARE"*) show_hardware_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_project_menu() {
+  case $(menu "$I18N_MENU_PROJECT" "$I18N_PROJECT_MIRROR\n$I18N_PROJECT_EXTEND\n$I18N_PROJECT_SCREEN1\n$I18N_PROJECT_SCREEN2") in
+  *"$I18N_PROJECT_MIRROR"*) omyvoid-hyprland-monitor-helper project mirror || back_to show_project_menu ;;
+  *"$I18N_PROJECT_EXTEND"*) omyvoid-hyprland-monitor-helper project extend || back_to show_project_menu ;;
+  *"$I18N_PROJECT_SCREEN1"*) omyvoid-hyprland-monitor-helper project screen1 || back_to show_project_menu ;;
+  *"$I18N_PROJECT_SCREEN2"*) omyvoid-hyprland-monitor-helper project screen2 || back_to show_project_menu ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_reminder_menu() {
+  case $(menu "$I18N_MENU_REMINDER" "$I18N_REM_SET\n$I18N_REM_SHOW\n$I18N_REM_CLEAR") in
+  *"$I18N_REM_SET"*) show_custom_reminder_input ;;
+  *"$I18N_REM_SHOW"*) omyvoid-reminder show ;;
+  *"$I18N_REM_CLEAR"*) omyvoid-reminder clear ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_custom_reminder_input() {
+  local minutes
+  minutes=$(omyvoid-menu-input "$I18N_REM_MINUTES")
+
+  if [[ $minutes =~ ^[0-9]+$ ]] && ((minutes > 0)); then
+    show_reminder_message_input "$minutes"
+  elif [[ -n $minutes ]]; then
+    omyvoid-notification-send -g 󰔛 "$I18N_REM_INVALID" "$I18N_REM_INVALID_MSG" -u critical
+    show_custom_reminder_input
+  else
+    back_to show_reminder_menu
+  fi
+}
+
+show_reminder_message_input() {
+  local minutes="$1"
+  local message
+  message=$(omyvoid-menu-input "$I18N_REM_MESSAGE")
+
+  if [[ -n $message ]]; then
+    omyvoid-reminder "$minutes" "$message"
+  else
+    omyvoid-reminder "$minutes"
+  fi
+}
+
+show_capture_menu() {
+  case $(menu "$I18N_MENU_CAPTURE" "$I18N_CAP_SCREENSHOT\n$I18N_CAP_SCREENRECORD\n$I18N_CAP_TEXT\n$I18N_CAP_COLOR") in
+  *"$I18N_CAP_SCREENSHOT"*) omyvoid-capture-screenshot ;;
+  *"$I18N_CAP_SCREENRECORD"*) show_screenrecord_menu ;;
+  *"$I18N_CAP_TEXT"*) omyvoid-capture-text-extraction ;;
+  *"$I18N_CAP_COLOR"*) pkill hyprpicker || hyprpicker -a ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+get_webcam_list() {
+  v4l2-ctl --list-devices 2>/dev/null | while IFS= read -r line; do
+    if [[ $line != $'\t'* && -n $line ]]; then
+      local name="$line"
+      IFS= read -r device || break
+      device=$(echo "$device" | tr -d '\t' | head -1)
+      [[ -n $device ]] && echo "$device  $name"
+    fi
+  done
+}
+
+show_webcam_select_menu() {
+  local devices=$(get_webcam_list)
+  local count=$(echo "$devices" | grep -c . 2>/dev/null || echo 0)
+
+  if [[ -z $devices ]] || ((count == 0)); then
+    notify-send "$I18N_REC_WEBCAM_NONE" -u critical -t 3000
+    return 1
+  fi
+
+  if ((count == 1)); then
+    echo "$devices" | awk '{print $1}'
+  else
+    menu "$I18N_REC_WEBCAM_SELECT" "$devices" | awk '{print $1}'
+  fi
+}
+
+show_screenrecord_menu() {
+  omyvoid-capture-screenrecording --stop-recording && exit 0
+
+  case $(menu "$I18N_MENU_SCREENRECORD" "$I18N_REC_NO_AUDIO\n$I18N_REC_DESKTOP_AUDIO\n$I18N_REC_MIC_AUDIO\n$I18N_REC_WEBCAM_AUDIO") in
+  *"$I18N_REC_NO_AUDIO"*) omyvoid-capture-screenrecording ;;
+  *"$I18N_REC_DESKTOP_AUDIO"*) omyvoid-capture-screenrecording --with-desktop-audio ;;
+  *"$I18N_REC_MIC_AUDIO"*) omyvoid-capture-screenrecording --with-desktop-audio --with-microphone-audio ;;
+  *"$I18N_REC_WEBCAM_AUDIO"*)
+    local device=$(show_webcam_select_menu) || {
+      back_to show_capture_menu
+      return
+    }
+    omyvoid-capture-screenrecording --with-desktop-audio --with-microphone-audio --with-webcam --webcam-device="$device"
+    ;;
+  *) back_to show_capture_menu ;;
+  esac
+}
+
+show_share_menu() {
+  case $(menu "$I18N_MENU_SHARE" "$I18N_SHARE_CLIPBOARD\n$I18N_SHARE_FILE\n$I18N_SHARE_FOLDER\n$I18N_SHARE_RECEIVE") in
+  *"$I18N_SHARE_RECEIVE"*) localsend ;;
+  *"$I18N_SHARE_CLIPBOARD"*) omyvoid-menu-share clipboard ;;
+  *"$I18N_SHARE_FILE"*) terminal bash -c "omyvoid-menu-share file" ;;
+  *"$I18N_SHARE_FOLDER"*) terminal bash -c "omyvoid-menu-share folder" ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_toggle_menu() {
+  local options="$I18N_TOG_SCREENSAVER\n$I18N_TOG_NIGHTLIGHT\n$I18N_TOG_IDLE\n$I18N_TOG_NOTIFS\n$I18N_TOG_BAR\n$I18N_TOG_LAYOUT\n$I18N_TOG_GAPS\n$I18N_TOG_RATIO\n$I18N_TOG_SCALING\n$I18N_TOG_DIRECT_BOOT\n$I18N_TOG_SUDO"
+
+  case $(menu "$I18N_MENU_TOGGLE" "$options") in
+  *"$I18N_TOG_SCREENSAVER"*) omyvoid-toggle-screensaver ;;
+  *"$I18N_TOG_NIGHTLIGHT"*) omyvoid-toggle-nightlight ;;
+  *"$I18N_TOG_IDLE"*) omyvoid-toggle-idle ;;
+  *"$I18N_TOG_NOTIFS"*) omyvoid-toggle-notification-silencing ;;
+  *"$I18N_TOG_BAR"*) omyvoid-toggle-waybar ;;
+  *"$I18N_TOG_LAYOUT"*) omyvoid-hyprland-workspace-layout-toggle ;;
+  *"$I18N_TOG_RATIO"*) omyvoid-hyprland-window-single-square-aspect-toggle ;;
+  *"$I18N_TOG_GAPS"*) omyvoid-hyprland-window-gaps-toggle ;;
+  *"$I18N_TOG_SCALING"*) omyvoid-hyprland-monitor-scaling-cycle ;;
+  *"$I18N_TOG_DIRECT_BOOT"*) present_terminal omyvoid-config-direct-boot ;;
+  *"$I18N_TOG_SUDO"*) present_terminal omyvoid-sudo-passwordless ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_hardware_menu() {
+  local options="$I18N_HW_DISPLAY\n$I18N_HW_MIRROR"
+
+  if omyvoid-hw-hybrid-gpu; then
+    options="$options\n$I18N_HW_GPU"
+  fi
+
+  if omyvoid-hw-touchpad; then
+    options="$options\n$I18N_HW_TOUCHPAD"
+  fi
+
+  if omyvoid-hw-dell-xps-haptic-touchpad && omyvoid-cmd-present dell-xps-touchpad-haptics; then
+    options="$options\n$I18N_HW_HAPTICS"
+  fi
+
+  if omyvoid-hw-touchscreen; then
+    options="$options\n$I18N_HW_TOUCHSCREEN"
+  fi
+
+  case $(menu "$I18N_MENU_TOGGLE" "$options") in
+  *"$I18N_HW_DISPLAY"*) omyvoid-hyprland-monitor-internal toggle ;;
+  *"$I18N_HW_MIRROR"*) omyvoid-hyprland-monitor-internal-mirror toggle ;;
+  *"$I18N_HW_HAPTICS"*) show_hardware_touchpad_haptics_menu ;;
+  *"$I18N_HW_TOUCHPAD"*) omyvoid-toggle-touchpad ;;
+  *"$I18N_HW_TOUCHSCREEN"*) omyvoid-toggle-touchscreen ;;
+  *"$I18N_HW_GPU"*) present_terminal omyvoid-toggle-hybrid-gpu ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_hardware_touchpad_haptics_menu() {
+  local current=$(dell-xps-touchpad-haptics get)
+  local selected=$(menu "$I18N_HW_HAPTICS" "low\nmid\nhigh" "" "$current")
+
+  if [[ -n $selected ]]; then
+    dell-xps-touchpad-haptics set "$selected"
+  else
+    back_to show_hardware_menu
+  fi
+}
+
+show_style_menu() {
+  case $(menu "$I18N_MENU_STYLE" "$I18N_STY_THEME\n$I18N_STY_UNLOCK\n$I18N_STY_FONT\n$I18N_STY_BACKGROUND\n$I18N_STY_WAYBAR\n$I18N_STY_CORNERS\n$I18N_STY_CURSOR\n$I18N_STY_HYPRLAND\n$I18N_STY_SCREENSAVER\n$I18N_STY_ABOUT") in
+
+  *"$I18N_STY_THEME"*) show_theme_menu ;;
+  *"$I18N_STY_UNLOCK"*) omyvoid-launch-walker -m menus:omyvoidunlocks --width 800 --minheight 400 ;;
+  *"$I18N_STY_FONT"*) show_font_menu ;;
+  *"$I18N_STY_BACKGROUND"*) show_background_menu ;;
+  *"$I18N_STY_CORNERS"*) show_style_corners_menu ;;
+  *"$I18N_STY_CURSOR"*) show_style_cursor_menu ;;
+  *"$I18N_STY_HYPRLAND"*) open_in_editor "$(hypr_config_file looknfeel)" ;;
+  *"$I18N_STY_WAYBAR"*) show_waybar_position_menu ;;
+  *"$I18N_STY_SCREENSAVER"*) show_screensaver_menu ;;
+  *"$I18N_STY_ABOUT"*) show_about_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_style_corners_menu() {
+  case $(omyvoid-menu-select "$I18N_STY_CORNERS" "$I18N_CORNERS_SHARP" "$I18N_CORNERS_ROUND") in
+  *"$I18N_CORNERS_SHARP"*) omyvoid-style-corners sharp ;;
+  *"$I18N_CORNERS_ROUND"*) omyvoid-style-corners round ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_style_cursor_menu() {
+  case $(omyvoid-menu-select "$I18N_STY_CURSOR" "$I18N_CURSOR_NORMAL" "$I18N_CURSOR_SLANTED") in
+  *"$I18N_CURSOR_NORMAL"*) omyvoid-style-terminal-cursor normal ;;
+  *"$I18N_CURSOR_SLANTED"*) omyvoid-style-terminal-cursor slanted ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_waybar_position_menu() {
+  case $(menu "$I18N_STY_WAYBAR" "$I18N_WAYBAR_TOP\n$I18N_WAYBAR_BOTTOM\n$I18N_WAYBAR_LEFT\n$I18N_WAYBAR_RIGHT") in
+  *"$I18N_WAYBAR_TOP"*) omyvoid-style-waybar-position top ;;
+  *"$I18N_WAYBAR_BOTTOM"*) omyvoid-style-waybar-position bottom ;;
+  *"$I18N_WAYBAR_LEFT"*) omyvoid-style-waybar-position left ;;
+  *"$I18N_WAYBAR_RIGHT"*) omyvoid-style-waybar-position right ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_about_menu() {
+  case $(menu "$I18N_STY_ABOUT" "$I18N_SUB_EDIT_TEXT\n$I18N_SUB_FROM_IMAGE\n$I18N_SUB_RESTORE") in
+  *"$I18N_SUB_EDIT_TEXT"*) omyvoid-branding-about text ;;
+  *"$I18N_SUB_FROM_IMAGE"*) omyvoid-branding-about image ;;
+  *"$I18N_SUB_RESTORE"*) omyvoid-branding-about reset ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_screensaver_menu() {
+  case $(menu "$I18N_STY_SCREENSAVER" "$I18N_SUB_EDIT_TEXT\n$I18N_SUB_FROM_IMAGE\n$I18N_SUB_RESTORE") in
+  *"$I18N_SUB_EDIT_TEXT"*) omyvoid-branding-screensaver text ;;
+  *"$I18N_SUB_FROM_IMAGE"*) omyvoid-branding-screensaver image ;;
+  *"$I18N_SUB_RESTORE"*) omyvoid-branding-screensaver reset ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_theme_menu() {
+  theme=$(omyvoid-theme-switcher)
+  [[ -n $theme ]] && omyvoid-theme-set "$theme"
+}
+
+show_background_menu() {
+  background=$(omyvoid-theme-bg-switcher)
+  [[ -n $background ]] && omyvoid-theme-bg-set "$background"
+}
+
+show_font_menu() {
+  theme=$(menu "$I18N_STY_FONT" "$(omyvoid-font-list)" "--width 350" "$(omyvoid-font-current)")
+  if [[ $theme == "CNCLD" || -z $theme ]]; then
+    back_to show_style_menu
+  else
+    omyvoid-font-set "$theme"
+  fi
+}
+
+show_setup_menu() {
+  local options="$I18N_SET_AUDIO\n$I18N_SET_WIFI\n$I18N_SET_BLUETOOTH\n$I18N_SET_POWER\n$I18N_SET_SLEEP\n$I18N_SET_MONITORS"
+  [[ -f ~/.config/hypr/bindings.conf ]] && options="$options\n$I18N_SET_KEYBINDINGS"
+  [[ -f ~/.config/hypr/input.conf ]] && options="$options\n$I18N_SET_CAPSLOCK\n$I18N_SET_INPUT"
+  options="$options\n$I18N_SET_DEFAULTS\n$I18N_SET_DNS\n$I18N_SET_SECURITY\n$I18N_SET_CONFIG\n$I18N_SET_LANGUAGE"
+
+  case $(menu "$I18N_MENU_SETUP" "$options") in
+  *"$I18N_SET_AUDIO"*) omyvoid-launch-audio ;;
+  *"$I18N_SET_WIFI"*) omyvoid-launch-wifi ;;
+  *"$I18N_SET_BLUETOOTH"*) omyvoid-launch-bluetooth ;;
+  *"$I18N_SET_POWER"*) show_setup_power_menu ;;
+  *"$I18N_SET_SLEEP"*) show_setup_system_menu ;;
+  *"$I18N_SET_MONITORS"*) open_in_editor "$(hypr_config_file monitors)" ;;
+  *"$I18N_SET_KEYBINDINGS"*) open_in_editor "$(hypr_config_file bindings)" ;;
+  *"$I18N_SET_CAPSLOCK"*) omyvoid-keyboard-capslock-set ;;
+  *"$I18N_SET_INPUT"*) open_in_editor "$(hypr_config_file input)" ;;
+  *"$I18N_SET_DEFAULTS"*) show_setup_default_menu ;;
+  *"$I18N_SET_DNS"*) present_terminal omyvoid-setup-dns ;;
+  *"$I18N_SET_SECURITY"*) show_setup_security_menu ;;
+  *"$I18N_SET_CONFIG"*) show_setup_config_menu ;;
+  *"$I18N_SET_LANGUAGE"*) show_language_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+translate_profile() {
+  case "$1" in
+    performance) echo "$I18N_POWER_PERFORMANCE" ;;
+    balanced) echo "$I18N_POWER_BALANCED" ;;
+    power-saver) echo "$I18N_POWER_POWER_SAVER" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+untranslate_profile() {
+  if [[ $1 == "$I18N_POWER_PERFORMANCE" ]]; then
+    echo "performance"
+  elif [[ $1 == "$I18N_POWER_BALANCED" ]]; then
+    echo "balanced"
+  elif [[ $1 == "$I18N_POWER_POWER_SAVER" ]]; then
+    echo "power-saver"
+  else
+    echo "$1"
+  fi
+}
+
+show_setup_power_menu() {
+  local current
+  current=$(powerprofilesctl get)
+
+  local options=""
+  local list
+  mapfile -t list < <(omyvoid-powerprofiles-list)
+
+  for p in "${list[@]}"; do
+    local display_p
+    display_p=$(translate_profile "$p")
+    if [[ $p == "$current" ]]; then
+      options+="${options:+$'\n'}●  $display_p"
+    else
+      options+="${options:+$'\n'}○  $display_p"
+    fi
+  done
+
+  local current_display
+  current_display=$(translate_profile "$current")
+
+  local selected
+  selected=$(menu "$I18N_SET_POWER" "$options" "" "●  $current_display")
+
+  if [[ $selected == "CNCLD" || -z $selected ]]; then
+    back_to show_setup_menu
+  else
+    local display_profile
+    display_profile="${selected#*  }"
+    local profile
+    profile=$(untranslate_profile "$display_profile")
+    powerprofilesctl set "$profile"
+  fi
+}
+
+show_setup_security_menu() {
+  case $(menu "$I18N_MENU_SETUP" "$I18N_SEC_FINGERPRINT\n$I18N_SEC_FIDO2") in
+  *"$I18N_SEC_FINGERPRINT"*) present_terminal omyvoid-setup-security-fingerprint ;;
+  *"$I18N_SEC_FIDO2"*) present_terminal omyvoid-setup-security-fido2 ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+show_setup_default_menu() {
+  case $(menu "$I18N_SET_DEFAULTS" "$I18N_DEFAULTS_BROWSER\n$I18N_DEFAULTS_TERMINAL\n$I18N_DEFAULTS_EDITOR") in
+  *"$I18N_DEFAULTS_BROWSER"*) show_setup_default_browser_menu ;;
+  *"$I18N_DEFAULTS_TERMINAL"*) show_setup_default_terminal_menu ;;
+  *"$I18N_DEFAULTS_EDITOR"*) show_setup_default_editor_menu ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+browser_desktop_exists() {
+  [[ -f ~/.local/share/applications/$1 || -f ~/.nix-profile/share/applications/$1 || -f /usr/share/applications/$1 ]]
+}
+
+show_setup_default_browser_menu() {
+  local options=""
+  browser_desktop_exists chromium.desktop && options="$options  Chromium"
+  browser_desktop_exists google-chrome.desktop && options="${options:+$options\n}󰊯  Chrome"
+  browser_desktop_exists brave-browser.desktop && options="${options:+$options\n}󰖟  Brave"
+  browser_desktop_exists brave-origin-beta.desktop && options="${options:+$options\n}󰖟  Brave Origin"
+  browser_desktop_exists microsoft-edge.desktop && options="${options:+$options\n}󰇩  Edge"
+  browser_desktop_exists firefox.desktop && options="${options:+$options\n}󰈹  Firefox"
+  browser_desktop_exists zen.desktop && options="${options:+$options\n}󰖟  Zen"
+
+  local current=""
+  case "$(omyvoid-default-browser)" in
+  chromium) current="  Chromium" ;;
+  chrome) current="󰊯  Chrome" ;;
+  brave) current="󰖟  Brave" ;;
+  brave-origin) current="󰖟  Brave Origin" ;;
+  edge) current="󰇩  Edge" ;;
+  firefox) current="󰈹  Firefox" ;;
+  zen) current="󰖟  Zen" ;;
+  esac
+
+  case $(menu "$I18N_SET_DEFAULT_BROWSER" "$options" "" "$current") in
+  *Chromium*) omyvoid-default-browser chromium ;;
+  *Chrome*) omyvoid-default-browser chrome ;;
+  *"Brave Origin"*) omyvoid-default-browser brave-origin ;;
+  *Brave*) omyvoid-default-browser brave ;;
+  *Edge*) omyvoid-default-browser edge ;;
+  *Firefox*) omyvoid-default-browser firefox ;;
+  *Zen*) omyvoid-default-browser zen ;;
+  *) show_setup_default_menu ;;
+  esac
+}
+
+show_setup_default_terminal_menu() {
+  local options=""
+  omyvoid-cmd-present alacritty && options="$options  Alacritty"
+  omyvoid-cmd-present foot && options="${options:+$options\n}  Foot"
+  omyvoid-cmd-present ghostty && options="${options:+$options\n}  Ghostty"
+  omyvoid-cmd-present kitty && options="${options:+$options\n}  Kitty"
+
+  local current=""
+  case "$(omyvoid-default-terminal)" in
+  alacritty) current="  Alacritty" ;;
+  foot) current="  Foot" ;;
+  ghostty) current="  Ghostty" ;;
+  kitty) current="  Kitty" ;;
+  esac
+
+  case $(menu "$I18N_SET_DEFAULT_TERMINAL" "$options" "" "$current") in
+  *Alacritty*) omyvoid-default-terminal alacritty ;;
+  *Foot*) omyvoid-default-terminal foot ;;
+  *Ghostty*) omyvoid-default-terminal ghostty ;;
+  *Kitty*) omyvoid-default-terminal kitty ;;
+  *) show_setup_default_menu ;;
+  esac
+}
+
+show_setup_default_editor_menu() {
+  local options=""
+  omyvoid-cmd-present nvim && options="$options  Neovim"
+  omyvoid-cmd-present code && options="${options:+$options\n}  VSCode"
+  omyvoid-cmd-present cursor && options="${options:+$options\n}  Cursor"
+  omyvoid-cmd-present zeditor && options="${options:+$options\n}  Zed"
+  omyvoid-cmd-present sublime_text && options="${options:+$options\n}  Sublime Text"
+  omyvoid-cmd-present helix && options="${options:+$options\n}  Helix"
+  omyvoid-cmd-present vim && options="${options:+$options\n}  Vim"
+  omyvoid-cmd-present emacs && options="${options:+$options\n}  Emacs"
+
+  local current=""
+  case "$(omyvoid-default-editor)" in
+  nvim) current="  Neovim" ;;
+  code) current="  VSCode" ;;
+  cursor) current="  Cursor" ;;
+  zed | zeditor) current="  Zed" ;;
+  sublime_text) current="  Sublime Text" ;;
+  helix) current="  Helix" ;;
+  vim) current="  Vim" ;;
+  emacs) current="  Emacs" ;;
+  esac
+
+  case $(menu "$I18N_SET_DEFAULT_EDITOR" "$options" "" "$current") in
+  *Neovim*) omyvoid-default-editor nvim ;;
+  *VSCode*) omyvoid-default-editor code ;;
+  *Cursor*) omyvoid-default-editor cursor ;;
+  *Zed*) omyvoid-default-editor zed ;;
+  *Sublime*) omyvoid-default-editor sublime_text ;;
+  *Helix*) omyvoid-default-editor helix ;;
+  *Vim*) omyvoid-default-editor vim ;;
+  *Emacs*) omyvoid-default-editor emacs ;;
+  *) show_setup_default_menu ;;
+  esac
+}
+
+show_setup_config_menu() {
+  case $(menu "$I18N_MENU_SETUP" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n  Swayosd\n󰌧  Walker\n󰍜  Waybar\n󰞅  XCompose") in
+  *Hyprland*) open_in_editor "$(hypr_config_file hyprland)" ;;
+  *Hypridle*) open_in_editor ~/.config/hypr/hypridle.conf && omyvoid-restart-hypridle ;;
+  *Hyprlock*) open_in_editor ~/.config/hypr/hyprlock.conf ;;
+  *Hyprsunset*) open_in_editor ~/.config/hypr/hyprsunset.conf && omyvoid-restart-hyprsunset ;;
+  *Swayosd*) open_in_editor ~/.config/swayosd/config.toml && omyvoid-restart-swayosd ;;
+  *Walker*) open_in_editor ~/.config/walker/config.toml && omyvoid-restart-walker ;;
+  *Waybar*) open_in_editor ~/.config/waybar/config.jsonc && omyvoid-restart-waybar ;;
+  *XCompose*) open_in_editor ~/.XCompose && omyvoid-restart-xcompose ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+show_setup_system_menu() {
+  local options=""
+
+  if omyvoid-toggle-enabled suspend-off; then
+    options="$options$I18N_SYS_ENABLE_SUSPEND"
+  else
+    options="$options$I18N_SYS_DISABLE_SUSPEND"
+  fi
+
+  if omyvoid-hibernation-available; then
+    options="$options\n$I18N_SYS_DISABLE_HIBERNATE"
+  else
+    options="$options\n$I18N_SYS_ENABLE_HIBERNATE"
+  fi
+
+  case $(menu "$I18N_MENU_SYSTEM" "$options") in
+  *Suspen*) omyvoid-toggle-suspend ;;
+  *"$I18N_SYS_ENABLE_HIBERNATE"*) present_terminal omyvoid-hibernation-setup ;;
+  *"$I18N_SYS_DISABLE_HIBERNATE"*) present_terminal omyvoid-hibernation-remove ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+show_install_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "$I18N_INS_PACKAGES\n$I18N_INS_WEBAPP\n$I18N_INS_TUI\n$I18N_INS_SERVICE\n$I18N_INS_STYLE\n$I18N_INS_DEV\n$I18N_INS_EDITOR\n$I18N_INS_TERMINAL\n$I18N_INS_BROWSER\n$I18N_INS_AI\n$I18N_INS_GAMING\n$I18N_INS_WINDOWS") in
+  *"$I18N_INS_PACKAGES"*) terminal omyvoid-pkg-install ;;
+  *"$I18N_INS_WEBAPP"*) present_terminal omyvoid-webapp-install ;;
+  *"$I18N_INS_TUI"*) present_terminal omyvoid-tui-install ;;
+  *"$I18N_INS_SERVICE"*) show_install_service_menu ;;
+  *"$I18N_INS_STYLE"*) show_install_style_menu ;;
+  *"$I18N_INS_DEV"*) show_install_development_menu ;;
+  *"$I18N_INS_EDITOR"*) show_install_editor_menu ;;
+  *"$I18N_INS_TERMINAL"*) show_install_terminal_menu ;;
+  *"$I18N_INS_BROWSER"*) show_install_browser_menu ;;
+  *"$I18N_INS_GAMING"*) show_install_gaming_menu ;;
+  *"$I18N_INS_AI"*) show_install_ai_menu ;;
+  *"$I18N_INS_WINDOWS"*) present_terminal "omyvoid-windows-vm install" ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_install_browser_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Chrome\n  Edge\n  Brave\n  Brave Origin\n  Firefox\n󰖟  Zen") in
+  *Chrome*) present_terminal "omyvoid-install-browser chrome" ;;
+  *Edge*) present_terminal "omyvoid-install-browser edge" ;;
+  *"Brave Origin"*) present_terminal "omyvoid-install-browser brave-origin" ;;
+  *Brave*) present_terminal "omyvoid-install-browser brave" ;;
+  *Firefox*) present_terminal "omyvoid-install-browser firefox" ;;
+  *Zen*) present_terminal "omyvoid-install-browser zen" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_service_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Dropbox\n  Tailscale\n󱇱  NordVPN\n☀  Sunshine\n󰟵  Bitwarden\n  Chromium Account") in
+  *Dropbox*) present_terminal omyvoid-install-dropbox ;;
+  *Tailscale*) present_terminal omyvoid-install-tailscale ;;
+  *NordVPN*) present_terminal omyvoid-install-nordvpn ;;
+  *Sunshine*) present_terminal omyvoid-install-service-sunshine ;;
+  *Bitwarden*) install_and_launch "Bitwarden" "bitwarden" "bitwarden" ;;
+  *Chromium*) present_terminal omyvoid-install-chromium-google-account ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_editor_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  VSCode\n  Cursor\n  Zed\n  Sublime Text\n  Helix\n  Vim\n  Emacs") in
+  *VSCode*) present_terminal omyvoid-install-vscode ;;
+  *Cursor*) present_terminal omyvoid-install-editor-cursor ;;
+  *Zed*) present_terminal omyvoid-install-zed ;;
+  *Sublime*) install_and_launch "Sublime Text" "sublime-text" "sublime_text" ;;
+  *Helix*) present_terminal omyvoid-install-helix ;;
+  *Vim*) install "Vim" "vim" ;;
+  *Emacs*) install "Emacs" "emacs" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_terminal_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Alacritty\n  Foot\n  Ghostty\n  Kitty") in
+  *Alacritty*) install_terminal "alacritty" ;;
+  *Foot*) install_terminal "foot" ;;
+  *Ghostty*) install_terminal "ghostty" ;;
+  *Kitty*) install_terminal "kitty" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_ai_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "$I18N_AI_DICTATION\n󱚤  Ollama\n󰚩  OpenCode\n󰚩  Antigravitty\n󰚩  Claude Code\n󰚩  Codex") in
+  *"$I18N_AI_DICTATION"*) present_terminal omyvoid-voxtype-install ;;
+  *Ollama*) present_terminal omyvoid-install-ai-ollama ;;
+  *OpenCode*) present_terminal omyvoid-install-ai-opencode ;;
+  *Antigravitty*) present_terminal omyvoid-install-ai-antigravity ;;
+  *Claude*) present_terminal omyvoid-install-ai-claude ;;
+  *Codex*) present_terminal omyvoid-install-ai-codex ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_gaming_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Steam\n󰯉  RetroArch\n󰍳  Minecraft\n󰢹  NVIDIA GeForce NOW\n$I18N_GAM_XBOX_CLOUD\n$I18N_GAM_XBOX_CONTROLLER\n$I18N_GAM_MOONLIGHT\n$I18N_GAM_LUTRIS\n$I18N_GAM_HEROIC\n$I18N_GAM_RETRO_LAUNCHER") in
+  *Steam*) present_terminal omyvoid-install-gaming-steam ;;
+  *"$I18N_GAM_RETRO_LAUNCHER"*) omyvoid-games-retro-install ;;
+  *RetroArch*) present_terminal omyvoid-install-gaming-retroarch ;;
+  *Minecraft*) present_terminal omyvoid-install-gaming-minecraft ;;
+  *GeForce*) present_terminal omyvoid-install-gaming-geforce-now ;;
+  *"$I18N_GAM_XBOX_CLOUD"*) present_terminal omyvoid-install-gaming-xbox-cloud ;;
+  *"$I18N_GAM_XBOX_CONTROLLER"*) present_terminal omyvoid-install-gaming-xbox-controllers ;;
+  *"$I18N_GAM_LUTRIS"*) present_terminal omyvoid-install-gaming-lutris ;;
+  *"$I18N_GAM_HEROIC"*) present_terminal omyvoid-install-gaming-heroic ;;
+  *"$I18N_GAM_MOONLIGHT"*) present_terminal omyvoid-install-gaming-moonlight ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_style_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "$I18N_STY_THEME\n$I18N_STY_BACKGROUND\n$I18N_STY_FONT") in
+  *"$I18N_STY_THEME"*) present_terminal omyvoid-theme-install ;;
+  *"$I18N_STY_BACKGROUND"*) omyvoid-theme-bg-install ;;
+  *"$I18N_STY_FONT"*) show_install_font_menu ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_font_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Cascadia Mono\n  Meslo LG Mono\n  Fira Code\n  Victor Code\n  Bitstream Vera Mono\n  Iosevka" "--width 350") in
+  *Cascadia*) install_font "Cascadia Mono" "ttf-cascadia-mono-nerd" "CaskaydiaMono Nerd Font" ;;
+  *Meslo*) install_font "Meslo LG Mono" "ttf-meslo-nerd" "MesloLGL Nerd Font" ;;
+  *Fira*) install_font "Fira Code" "ttf-firacode-nerd" "FiraCode Nerd Font" ;;
+  *Victor*) install_font "Victor Code" "ttf-victor-mono-nerd" "VictorMono Nerd Font" ;;
+  *Bitstream*) install_font "Bitstream Vera Code" "ttf-bitstream-vera-mono-nerd" "BitstromWera Nerd Font" ;;
+  *Iosevka*) install_font "Iosevka" "ttf-iosevka-nerd" "Iosevka Nerd Font Mono" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_development_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "󰫏  Ruby on Rails\n  Docker DB\n  JavaScript\n  Go\n  PHP\n  Python\n  Elixir\n  Zig\n  Rust\n  Java\n  .NET\n  OCaml\n  Clojure\n  Scala") in
+  *Rails*) present_terminal "omyvoid-install-dev-env ruby" ;;
+  *Docker*) present_terminal omyvoid-install-docker-dbs ;;
+  *JavaScript*) show_install_javascript_menu ;;
+  *Go*) present_terminal "omyvoid-install-dev-env go" ;;
+  *PHP*) show_install_php_menu ;;
+  *Python*) present_terminal "omyvoid-install-dev-env python" ;;
+  *Elixir*) show_install_elixir_menu ;;
+  *Zig*) present_terminal "omyvoid-install-dev-env zig" ;;
+  *Rust*) present_terminal "omyvoid-install-dev-env rust" ;;
+  *Java*) present_terminal "omyvoid-install-dev-env java" ;;
+  *NET*) present_terminal "omyvoid-install-dev-env dotnet" ;;
+  *OCaml*) present_terminal "omyvoid-install-dev-env ocaml" ;;
+  *Clojure*) present_terminal "omyvoid-install-dev-env clojure" ;;
+  *Scala*) present_terminal "omyvoid-install-dev-env scala" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_javascript_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Node.js\n  Bun\n  Deno") in
+  *Node*) present_terminal "omyvoid-install-dev-env node" ;;
+  *Bun*) present_terminal "omyvoid-install-dev-env bun" ;;
+  *Deno*) present_terminal "omyvoid-install-dev-env deno" ;;
+  *) show_install_development_menu ;;
+  esac
+}
+
+show_install_php_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  PHP\n  Laravel\n  Symfony") in
+  *PHP*) present_terminal "omyvoid-install-dev-env php" ;;
+  *Laravel*) present_terminal "omyvoid-install-dev-env laravel" ;;
+  *Symfony*) present_terminal "omyvoid-install-dev-env symfony" ;;
+  *) show_install_development_menu ;;
+  esac
+}
+
+show_install_elixir_menu() {
+  case $(menu "$I18N_MENU_INSTALL" "  Elixir\n  Phoenix") in
+  *Elixir*) present_terminal "omyvoid-install-dev-env elixir" ;;
+  *Phoenix*) present_terminal "omyvoid-install-dev-env phoenix" ;;
+  *) show_install_development_menu ;;
+  esac
+}
+
+show_remove_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "$I18N_REM_PACKAGE\n$I18N_REM_WEBAPP\n$I18N_REM_TUI\n$I18N_REM_DEV\n$I18N_REM_THEME\n$I18N_REM_BROWSER\n$I18N_REM_DICTATION\n$I18N_REM_GAMING\n$I18N_REM_WINDOWS\n$I18N_REM_PREINSTALLS\n$I18N_REM_SECURITY") in
+  *"$I18N_REM_PACKAGE"*) terminal omyvoid-pkg-remove ;;
+  *"$I18N_REM_WEBAPP"*) present_terminal omyvoid-webapp-remove ;;
+  *"$I18N_REM_TUI"*) present_terminal omyvoid-tui-remove ;;
+  *"$I18N_REM_DEV"*) show_remove_development_menu ;;
+  *"$I18N_REM_THEME"*) present_terminal omyvoid-theme-remove ;;
+  *"$I18N_REM_BROWSER"*) show_remove_browser_menu ;;
+  *"$I18N_REM_DICTATION"*) present_terminal omyvoid-voxtype-remove ;;
+  *"$I18N_REM_GAMING"*) show_remove_gaming_menu ;;
+  *"$I18N_REM_WINDOWS"*) present_terminal "omyvoid-windows-vm remove" ;;
+  *"$I18N_REM_PREINSTALLS"*) present_terminal omyvoid-remove-preinstalls ;;
+  *"$I18N_REM_SECURITY"*) show_remove_security_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_remove_security_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "$I18N_SEC_FINGERPRINT\n$I18N_SEC_FIDO2") in
+  *"$I18N_SEC_FINGERPRINT"*) present_terminal omyvoid-remove-security-fingerprint ;;
+  *"$I18N_SEC_FIDO2"*) present_terminal omyvoid-remove-security-fido2 ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_browser_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "  Chrome\n  Edge\n  Brave\n  Brave Origin\n  Firefox\n  Zen") in
+  *Chrome*) present_terminal "omyvoid-remove-browser chrome" ;;
+  *Edge*) present_terminal "omyvoid-remove-browser edge" ;;
+  *"Brave Origin"*) present_terminal "omyvoid-remove-browser brave-origin" ;;
+  *Brave*) present_terminal "omyvoid-remove-browser brave" ;;
+  *Firefox*) present_terminal "omyvoid-remove-browser firefox" ;;
+  *Zen*) present_terminal "omyvoid-remove-browser zen" ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_gaming_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "  Steam\n  RetroArch\n󰍳  Minecraft\n󰢹  NVIDIA GeForce NOW\n$I18N_GAM_XBOX_CLOUD\n$I18N_GAM_XBOX_CONTROLLER\n$I18N_GAM_MOONLIGHT\n$I18N_GAM_LUTRIS\n$I18N_GAM_HEROIC") in
+  *Steam*) present_terminal omyvoid-remove-gaming-steam ;;
+  *RetroArch*) present_terminal omyvoid-remove-gaming-retroarch ;;
+  *Minecraft*) present_terminal omyvoid-remove-gaming-minecraft ;;
+  *GeForce*) present_terminal omyvoid-remove-gaming-geforce-now ;;
+  *"$I18N_GAM_XBOX_CLOUD"*) present_terminal omyvoid-remove-gaming-xbox-cloud ;;
+  *"$I18N_GAM_XBOX_CONTROLLER"*) present_terminal omyvoid-remove-gaming-xbox-controllers ;;
+  *"$I18N_GAM_MOONLIGHT"*) present_terminal omyvoid-remove-gaming-moonlight ;;
+  *"$I18N_GAM_LUTRIS"*) present_terminal omyvoid-remove-gaming-lutris ;;
+  *"$I18N_GAM_HEROIC"*) present_terminal omyvoid-remove-gaming-heroic ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_development_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "󰫏  Ruby on Rails\n  JavaScript\n  Go\n  PHP\n  Python\n  Elixir\n  Zig\n  Rust\n  Java\n  .NET\n  OCaml\n  Clojure\n  Scala") in
+  *Rails*) present_terminal "omyvoid-remove-dev-env ruby" ;;
+  *JavaScript*) show_remove_javascript_menu ;;
+  *Go*) present_terminal "omyvoid-remove-dev-env go" ;;
+  *PHP*) show_remove_php_menu ;;
+  *Python*) present_terminal "omyvoid-remove-dev-env python" ;;
+  *Elixir*) show_remove_elixir_menu ;;
+  *Zig*) present_terminal "omyvoid-remove-dev-env zig" ;;
+  *Rust*) present_terminal "omyvoid-remove-dev-env rust" ;;
+  *Java*) present_terminal "omyvoid-remove-dev-env java" ;;
+  *NET*) present_terminal "omyvoid-remove-dev-env dotnet" ;;
+  *OCaml*) present_terminal "omyvoid-remove-dev-env ocaml" ;;
+  *Clojure*) present_terminal "omyvoid-remove-dev-env clojure" ;;
+  *Scala*) present_terminal "omyvoid-remove-dev-env scala" ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_javascript_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "  Node.js\n  Bun\n  Deno") in
+  *Node*) present_terminal "omyvoid-remove-dev-env node" ;;
+  *Bun*) present_terminal "omyvoid-remove-dev-env bun" ;;
+  *Deno*) present_terminal "omyvoid-remove-dev-env deno" ;;
+  *) show_remove_development_menu ;;
+  esac
+}
+
+show_remove_php_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "  PHP\n  Laravel\n  Symfony") in
+  *PHP*) present_terminal "omyvoid-remove-dev-env php" ;;
+  *Laravel*) present_terminal "omyvoid-remove-dev-env laravel" ;;
+  *Symfony*) present_terminal "omyvoid-remove-dev-env symfony" ;;
+  *) show_remove_development_menu ;;
+  esac
+}
+
+show_remove_elixir_menu() {
+  case $(menu "$I18N_MENU_REMOVE" "  Elixir\n  Phoenix") in
+  *Elixir*) present_terminal "omyvoid-remove-dev-env elixir" ;;
+  *Phoenix*) present_terminal "omyvoid-remove-dev-env phoenix" ;;
+  *) show_remove_development_menu ;;
+  esac
+}
+
+show_update_menu() {
+  case $(menu "$I18N_MENU_UPDATE" "$I18N_UPD_OMYVOID\n$I18N_UPD_CHANNEL\n$I18N_UPD_CONFIG\n$I18N_UPD_THEMES\n$I18N_UPD_PROCESS\n$I18N_UPD_HARDWARE\n$I18N_UPD_FIRMWARE\n$I18N_UPD_PASSWORD\n$I18N_UPD_TIMEZONE\n$I18N_UPD_TIME") in
+  *"$I18N_UPD_OMYVOID"*) present_terminal omyvoid-update ;;
+  *"$I18N_UPD_CHANNEL"*) show_update_channel_menu ;;
+  *"$I18N_UPD_CONFIG"*) show_update_config_menu ;;
+  *"$I18N_UPD_THEMES"*) present_terminal omyvoid-theme-update ;;
+  *"$I18N_UPD_PROCESS"*) show_update_process_menu ;;
+  *"$I18N_UPD_HARDWARE"*) show_update_hardware_menu ;;
+  *"$I18N_UPD_FIRMWARE"*) present_terminal omyvoid-update-firmware ;;
+  *"$I18N_UPD_TIMEZONE"*) present_terminal omyvoid-tz-select ;;
+  *"$I18N_UPD_TIME"*) present_terminal omyvoid-update-time ;;
+  *"$I18N_UPD_PASSWORD"*) show_update_password_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_update_channel_menu() {
+  case $(menu "$I18N_UPD_CHANNEL_PROMPT" "$I18N_UPD_CHANNEL_STABLE\n$I18N_UPD_CHANNEL_RC\n$I18N_UPD_CHANNEL_EDGE\n$I18N_UPD_CHANNEL_DEV") in
+  *"$I18N_UPD_CHANNEL_STABLE"*) present_terminal "omyvoid-channel-set stable" ;;
+  *"$I18N_UPD_CHANNEL_RC"*) present_terminal "omyvoid-channel-set rc" ;;
+  *"$I18N_UPD_CHANNEL_EDGE"*) present_terminal "omyvoid-channel-set edge" ;;
+  *"$I18N_UPD_CHANNEL_DEV"*) present_terminal "omyvoid-channel-set dev" ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_process_menu() {
+  case $(menu "$I18N_UPD_RESTART" "  Hypridle\n  Hyprsunset\n󰎟  Mako\n  Swayosd\n󰌧  Walker\n󰍜  Waybar") in
+  *Hypridle*) omyvoid-restart-hypridle ;;
+  *Hyprsunset*) omyvoid-restart-hyprsunset ;;
+  *Mako*) omyvoid-restart-mako ;;
+  *Swayosd*) omyvoid-restart-swayosd ;;
+  *Walker*) omyvoid-restart-walker ;;
+  *Waybar*) omyvoid-restart-waybar ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_config_menu() {
+  case $(menu "$I18N_UPD_DEFAULT_CONFIG" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󱣴  Plymouth\n  Swayosd\n  Tmux\n󰌧  Walker\n󰍜  Waybar") in
+  *Hyprland*) present_terminal omyvoid-refresh-hyprland ;;
+  *Hypridle*) present_terminal omyvoid-refresh-hypridle ;;
+  *Hyprlock*) present_terminal omyvoid-refresh-hyprlock ;;
+  *Hyprsunset*) present_terminal omyvoid-refresh-hyprsunset ;;
+  *Plymouth*) present_terminal omyvoid-refresh-plymouth ;;
+  *Swayosd*) present_terminal omyvoid-refresh-swayosd ;;
+  *Tmux*) present_terminal omyvoid-refresh-tmux ;;
+  *Walker*) present_terminal omyvoid-refresh-walker ;;
+  *Waybar*) present_terminal omyvoid-refresh-waybar ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_hardware_menu() {
+  case $(menu "$I18N_UPD_RESTART" "$I18N_SET_AUDIO\n$I18N_HW_WIFI\n$I18N_SET_BLUETOOTH\n$I18N_SET_TRACKPAD") in
+  *"$I18N_SET_AUDIO"*) present_terminal omyvoid-restart-pipewire ;;
+  *"$I18N_HW_WIFI"*) present_terminal omyvoid-restart-wifi ;;
+  *"$I18N_SET_BLUETOOTH"*) present_terminal omyvoid-restart-bluetooth ;;
+  *"$I18N_SET_TRACKPAD"*) present_terminal omyvoid-restart-trackpad ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_password_menu() {
+  case $(menu "$I18N_UPD_PASSWORD_PROMPT" "$I18N_PWD_DRIVE\n$I18N_PWD_USER") in
+  *"$I18N_PWD_DRIVE"*) present_terminal omyvoid-drive-password ;;
+  *"$I18N_PWD_USER"*) present_terminal passwd ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_about() {
+  omyvoid-launch-about
+}
+
+show_system_menu() {
+  local options="$I18N_SYS_SCREENSAVER\n$I18N_SYS_LOCK"
+  ! omyvoid-toggle-enabled suspend-off && options="$options\n$I18N_SYS_SUSPEND"
+  omyvoid-hibernation-available && options="$options\n$I18N_SYS_HIBERNATE"
+  options="$options\n$I18N_SYS_LOGOUT\n$I18N_SYS_RESTART\n$I18N_SYS_SHUTDOWN"
+
+  case $(menu "$I18N_MENU_SYSTEM" "$options") in
+  *"$I18N_SYS_SCREENSAVER"*) omyvoid-launch-screensaver force ;;
+  *"$I18N_SYS_LOCK"*) omyvoid-system-lock ;;
+  *"$I18N_SYS_SUSPEND"*) loginctl suspend ;;
+  *"$I18N_SYS_HIBERNATE"*) loginctl hibernate ;;
+  *"$I18N_SYS_LOGOUT"*) omyvoid-system-logout ;;
+  *"$I18N_SYS_RESTART"*) omyvoid-system-reboot ;;
+  *"$I18N_SYS_SHUTDOWN"*) omyvoid-system-shutdown ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+show_language_menu() {
+  case $(menu "$I18N_SET_LANGUAGE" "English\nPortuguês (Brasil)\nEspañol") in
+  *English*) echo "en" > ~/.config/omyvoid/language ;;
+  *Português*) echo "pt-br" > ~/.config/omyvoid/language ;;
+  *Español*) echo "es" > ~/.config/omyvoid/language ;;
+  esac
+
+  # Reload translation variables
+  source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+  # Update hyprlock placeholder text immediately
+  if [[ -f ~/.config/hypr/hyprlock.conf ]]; then
+    local placeholder
+    if grep -q "fingerprint:enabled = true" ~/.config/hypr/hyprlock.conf 2>/dev/null; then
+      placeholder="<span> $I18N_HYPRLOCK_PLACEHOLDER 󰈷 </span>"
+    else
+      placeholder="$I18N_HYPRLOCK_PLACEHOLDER"
+    fi
+    sed -i "s/placeholder_text = .*/placeholder_text = ${placeholder//\//\\/}/" ~/.config/hypr/hyprlock.conf
+  fi
+
+  # Back to setup menu
+  show_setup_menu
+}
+
+show_main_menu() {
+  go_to_menu "$(menu "$I18N_MENU_GO" "$I18N_OPT_APPS\n$I18N_OPT_LEARN\n$I18N_OPT_TRIGGER\n$I18N_OPT_STYLE\n$I18N_OPT_SETUP\n$I18N_OPT_INSTALL\n$I18N_OPT_REMOVE\n$I18N_OPT_UPDATE\n$I18N_OPT_ABOUT\n$I18N_OPT_SYSTEM")"
+}
+
+go_to_menu() {
+  local val="$1"
+  case "$val" in
+  *"$I18N_OPT_APPS"* | *apps*) walker -p "$I18N_MENU_LAUNCH_PROMPT" ;;
+  *"$I18N_OPT_LEARN"* | *learn*) show_learn_menu ;;
+  *"$I18N_OPT_TRIGGER"* | *trigger*) show_trigger_menu ;;
+  *"$I18N_OPT_STYLE"* | *style*) show_style_menu ;;
+  *"$I18N_OPT_SETUP"* | *setup*) show_setup_menu ;;
+  *"$I18N_OPT_INSTALL"* | *install*) show_install_menu ;;
+  *"$I18N_OPT_REMOVE"* | *remove*) show_remove_menu ;;
+  *"$I18N_OPT_UPDATE"* | *update*) show_update_menu ;;
+  *"$I18N_OPT_ABOUT"* | *about*) show_about ;;
+  *"$I18N_OPT_SYSTEM"* | *system*) show_system_menu ;;
+  # English-only legacy or CLI argument entry points
+  *toggle*) show_toggle_menu ;;
+  *hardware*) show_hardware_menu ;;
+  *share*) show_share_menu ;;
+  *reminder-set*) show_custom_reminder_input ;;
+  *reminder*) show_reminder_menu ;;
+  *background*) show_background_menu ;;
+  *capture*) show_capture_menu ;;
+  *theme*) show_theme_menu ;;
+  *screenrecord*) show_screenrecord_menu ;;
+  *power*) show_setup_power_menu ;;
+  esac
+}
+
+# Allow user extensions and overrides
+USER_EXTENSIONS="$HOME/.config/omyvoid/extensions/menu.sh"
+[[ -f $USER_EXTENSIONS ]] && source "$USER_EXTENSIONS"
+
+toggle_existing_menu
+
+if [[ -n $1 ]]; then
+  BACK_TO_EXIT=true
+  go_to_menu "$1"
+else
+  show_main_menu
+fi

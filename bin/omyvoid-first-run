@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# omyvoid:summary=Finish the installation of Omyvoid with items that can only be done after logging in.
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Skip first-run wizard if running in a Live ISO environment
+if [[ -d /run/initramfs/live || $USER == "omyvoid" ]]; then
+  echo "Live ISO environment detected - skipping first-run setup."
+  exit 0
+fi
+
+FIRST_RUN_MODE=~/.local/state/omyvoid/first-run.mode
+
+if [[ -f $FIRST_RUN_MODE ]]; then
+  rm -f "$FIRST_RUN_MODE"
+
+  bash "$OMYVOID_PATH/install/first-run/battery-monitor.sh"
+  bash "$OMYVOID_PATH/install/first-run/recover-internal-monitor.sh"
+  bash "$OMYVOID_PATH/install/first-run/cleanup-reboot-sudoers.sh"
+  bash "$OMYVOID_PATH/install/first-run/firewall.sh"
+  bash "$OMYVOID_PATH/install/first-run/dns-resolver.sh"
+  bash "$OMYVOID_PATH/install/first-run/gnome-theme.sh"
+  bash "$OMYVOID_PATH/install/first-run/gdk-scale.sh"
+  bash "$OMYVOID_PATH/install/first-run/swayosd.sh"
+  bash "$OMYVOID_PATH/install/first-run/gtk-primary-paste.sh"
+  bash "$OMYVOID_PATH/install/first-run/elephant.sh"
+  omyvoid-hook-install post-update "$OMYVOID_PATH/install/first-run/install-voxtype.hook"
+  sudo rm -f /etc/sudoers.d/first-run
+
+  bash "$OMYVOID_PATH/install/first-run/welcome.sh"
+  bash "$OMYVOID_PATH/install/first-run/wifi.sh"
+fi

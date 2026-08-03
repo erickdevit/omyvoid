@@ -1,6 +1,6 @@
-OMYBUNTU_MIGRATIONS_STATE_PATH=~/.local/state/omybuntu/migrations
-mkdir -p $OMYBUNTU_MIGRATIONS_STATE_PATH
+OMYVOID_MIGRATIONS_STATE_PATH=~/.local/state/omyvoid/migrations
+mkdir -p $OMYVOID_MIGRATIONS_STATE_PATH
 
-for file in "$OMYBUNTU_PATH"/migrations/*.sh; do
-  touch "$OMYBUNTU_MIGRATIONS_STATE_PATH/$(basename "$file")"
+for file in "$OMYVOID_PATH"/migrations/*.sh; do
+  touch "$OMYVOID_MIGRATIONS_STATE_PATH/$(basename "$file")"
 done

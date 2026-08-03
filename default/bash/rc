@@ -1,6 +1,6 @@
-source ~/.local/share/omybuntu/default/bash/envs
-source ~/.local/share/omybuntu/default/bash/shell
-source ~/.local/share/omybuntu/default/bash/aliases
-source ~/.local/share/omybuntu/default/bash/functions
-source ~/.local/share/omybuntu/default/bash/init
-[[ $- == *i* ]] && bind -f ~/.local/share/omybuntu/default/bash/inputrc
+source ~/.local/share/omyvoid/default/bash/envs
+source ~/.local/share/omyvoid/default/bash/shell
+source ~/.local/share/omyvoid/default/bash/aliases
+source ~/.local/share/omyvoid/default/bash/functions
+source ~/.local/share/omyvoid/default/bash/init
+[[ $- == *i* ]] && bind -f ~/.local/share/omyvoid/default/bash/inputrc

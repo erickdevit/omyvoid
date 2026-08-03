@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# omyvoid:summary=Show Omyvoid bin metadata fields and defaults
+# omyvoid:args=[--json]
+
+set -euo pipefail
+
+show_json() {
+  jq -n '{
+    ok: true,
+    defaults: {
+      group: "first filename segment after omyvoid-",
+      name: "remaining filename segments with dashes converted to spaces",
+      route: "omyvoid <group> <name>",
+      binary: "filename",
+      requires_sudo: false
+    },
+    fields: [
+      {name: "summary", required: true, type: "string", note: "One-line human and agent-facing description."},
+      {name: "group", required: false, type: "string", note: "Only set when the route group should differ from the filename-derived group."},
+      {name: "name", required: false, type: "string", note: "Only set when the route name should differ from the filename-derived name. May be empty for root commands."},
+      {name: "args", required: false, type: "string", note: "Only set when the command accepts arguments."},
+      {name: "examples", required: false, type: "string", note: "Pipe-separated examples."},
+      {name: "aliases", required: false, type: "string", note: "Pipe-separated alternate routes, e.g. omyvoid screenshot."},
+      {name: "requires-sudo", required: false, type: "true", default: false, note: "Only include when true."},
+      {name: "hidden", required: false, type: "true", default: false, note: "Hide from default command listings; visible with --all."}
+    ]
+  }'
+}
+
+show_help() {
+  cat <<'EOF'
+Omyvoid bin metadata
+
+Metadata lives in the top comment block of each executable bin/omyvoid-* file.
+Keep it slim: define only fields that are required or override defaults.
+
+Required:
+  # omyvoid:summary=<one-line description>
+
+Inferred defaults:
+  group         first filename segment after omyvoid-
+  name          remaining filename segments, with dashes converted to spaces
+  route         omyvoid <group> <name>
+  binary        filename
+  requires-sudo false
+  hidden        false
+
+Optional fields:
+  # omyvoid:group=<group>                  route override only
+  # omyvoid:name=<name>                    route override only; may be empty
+  # omyvoid:args=<args>                    only if the command accepts args
+  # omyvoid:examples=<cmd> | <cmd>         pipe-separated examples
+  # omyvoid:aliases=<route> | <route>      pipe-separated alternate routes
+  # omyvoid:requires-sudo=true             only when true
+  # omyvoid:hidden=true                    hide from default command listings
+
+Do not define:
+  binary      inferred from filename
+  usage       derived from route + args
+  false flags or empty args
+
+Examples:
+  # omyvoid:summary=Restart Walker and related user services
+
+  # omyvoid:summary=Take a screenshot
+  # omyvoid:group=capture
+  # omyvoid:args=[smart|region|windows|fullscreen] [slurp|copy] [--editor=<name>]
+  # omyvoid:examples=omyvoid screenshot | omyvoid capture screenshot region
+  # omyvoid:aliases=omyvoid screenshot
+EOF
+}
+
+case "${1:-}" in
+--json)
+  show_json
+  ;;
+--help | -h)
+  show_help
+  ;;
+"")
+  show_help
+  ;;
+*)
+  echo "Unknown option: $1" >&2
+  show_help >&2
+  exit 2
+  ;;
+esac

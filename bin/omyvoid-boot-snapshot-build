@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# omyvoid:summary=Build the UKI used to boot a Snapper snapshot
+# omyvoid:group=boot
+# omyvoid:name=snapshot-build
+# omyvoid:args=<snapshot-id>
+# omyvoid:hidden=true
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+(( EUID == 0 )) || exec sudo "$0" "$@"
+
+id=${1:?snapshot id is required}
+[[ $id =~ ^[0-9]+$ ]] || { echo "Invalid snapshot id: $id" >&2; exit 2; }
+source /etc/default/limine
+ESP_PATH=${ESP_PATH:-/boot}
+mapfile -t kernels < <(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
+kernel=${kernels[-1]:?No installed kernel found}
+
+if [[ -n ${OMYVOID_LUKS_UUID:-} ]]; then
+  root_args="rd.luks.uuid=luks-$OMYVOID_LUKS_UUID root=/dev/mapper/omyvoid_crypt"
+else
+  root_args="root=UUID=$OMYVOID_ROOT_UUID"
+fi
+cmdline="$root_args rootfstype=btrfs rootflags=subvol=@snapshots/$id/snapshot rw ${OMYVOID_KERNEL_CMDLINE:-quiet splash} omyvoid.snapshot=$id"
+omyvoid-uki-build "$ESP_PATH/EFI/Linux/omyvoid-snapshot-$id.efi" "$kernel" "$cmdline" yes
+
+description=$(snapper -c root list --columns number,date,description 2>/dev/null | awk -v id="$id" '$1 == id {$1=""; sub(/^ +/, ""); print; exit}')
+printf '%s\n' "Snapshot $id${description:+ — $description}" > "$ESP_PATH/EFI/Linux/omyvoid-snapshot-$id.meta"
+omyvoid-boot-refresh

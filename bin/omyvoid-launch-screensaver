@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch the Omyvoid screensaver in the default terminal on the system with the correct font configuration.
+
+OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+export PATH="$OMYVOID_PATH/bin:$PATH"
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if ! command -v tte &>/dev/null; then
+
+  exit 1
+fi
+
+# Exit early if screensave is already running
+pgrep -f org.omyvoid.screensaver && exit 0
+
+# Allow screensaver to be turned off but also force started
+if omyvoid-toggle-enabled screensaver-off && [[ $1 != "force" ]]; then
+  exit 1
+fi
+
+# Silently quit Walker on overlay
+command -v walker &>/dev/null && walker -q
+
+focused=$(omyvoid-hyprland-monitor-focused)
+terminal=$(xdg-terminal-exec --print-id)
+
+hypr_focus_monitor() {
+  local res
+  if ! res=$(hyprctl dispatch "hl.dsp.focus({ monitor = \"$1\" })" 2>&1) || [[ $res == *"Invalid dispatcher"* ]]; then
+    hyprctl dispatch focusmonitor "$1" >/dev/null
+  fi
+}
+
+hypr_exec() {
+  local command="$1"
+  local res
+  if ! res=$(hyprctl dispatch "hl.dsp.exec_cmd([[$command]])" 2>&1) || [[ $res == *"Invalid dispatcher"* ]]; then
+    setsid bash -c "$command" >/dev/null 2>&1 &
+  fi
+}
+
+for m in $(hyprctl monitors -j | jq -r '.[] | .name'); do
+  hypr_focus_monitor "$m"
+
+  case $terminal in
+  *Alacritty*)
+    hypr_exec "alacritty --class=org.omyvoid.screensaver --config-file ~/.local/share/omyvoid/default/alacritty/screensaver.toml -e \"$OMYVOID_PATH/bin/omyvoid-screensaver\""
+    ;;
+  *ghostty*)
+    hypr_exec "ghostty --class=org.omyvoid.screensaver --config-file=~/.local/share/omyvoid/default/ghostty/screensaver --font-size=18 -e \"$OMYVOID_PATH/bin/omyvoid-screensaver\""
+    ;;
+  *foot*)
+    hypr_exec "foot --app-id=org.omyvoid.screensaver --config=\"$OMYVOID_PATH/default/foot/screensaver.ini\" -e \"$OMYVOID_PATH/bin/omyvoid-screensaver\""
+    ;;
+  *kitty*)
+    hypr_exec "kitty --class=org.omyvoid.screensaver --override font_size=18 --override window_padding_width=0 -e \"$OMYVOID_PATH/bin/omyvoid-screensaver\""
+    ;;
+  *)
+    omyvoid-notification-send -g ✋ "$I18N_SCREENSAVER_TERM_ONLY"
+    ;;
+  esac
+done
+
+hypr_focus_monitor "$focused"

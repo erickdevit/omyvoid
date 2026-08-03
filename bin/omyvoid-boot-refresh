@@ -1,0 +1,127 @@
+#!/bin/bash
+
+# omyvoid:summary=Regenerate Omyvoid UKIs and the canonical Limine menu
+# omyvoid:group=boot
+# omyvoid:name=refresh
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+(( EUID == 0 )) || exec sudo "$0" "$@"
+
+OMYVOID_PATH=${OMYVOID_PATH:-/opt/omyvoid}
+[[ -d $OMYVOID_PATH ]] || OMYVOID_PATH="$HOME/.local/share/omyvoid"
+config=/etc/default/limine
+[[ -f $config ]] && source "$config"
+
+ESP_PATH=${ESP_PATH:-/boot}
+OMYVOID_ROOT_SUBVOLUME=${OMYVOID_ROOT_SUBVOLUME:-@}
+OMYVOID_KERNEL_CMDLINE=${OMYVOID_KERNEL_CMDLINE:-rw quiet splash loglevel=3 rd.udev.log_level=3}
+mkdir -p /run/lock "$ESP_PATH/EFI/Linux" "$ESP_PATH/EFI/Omyvoid"
+
+exec 9>/run/lock/omyvoid-limine.lock
+flock 9
+mode=${1:-}
+
+root_arguments() {
+  if [[ -n ${OMYVOID_LUKS_UUID:-} ]]; then
+    printf 'rd.luks.uuid=luks-%s root=/dev/mapper/omyvoid_crypt' "$OMYVOID_LUKS_UUID"
+  elif [[ -n ${OMYVOID_ROOT_UUID:-} ]]; then
+    printf 'root=UUID=%s' "$OMYVOID_ROOT_UUID"
+  else
+    echo "Missing OMYVOID_ROOT_UUID in $config" >&2
+    return 1
+  fi
+}
+
+build_uki() {
+  local output=$1
+  local subvolume=$2
+  local extra=${3:-}
+  local hostonly=${4:-yes}
+  local kernel=$5
+  local cmdline
+  cmdline="$(root_arguments) rootfstype=btrfs rootflags=subvol=$subvolume $OMYVOID_KERNEL_CMDLINE $extra"
+  omyvoid-uki-build "$output" "$kernel" "$cmdline" "$hostonly"
+}
+
+kernel=unchanged
+if [[ $mode != "--menu-only" ]]; then
+  mapfile -t kernels < <(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -V)
+  if (( ${#kernels[@]} == 0 )); then
+    echo "No installed Void kernel was found in /usr/lib/modules" >&2
+    exit 1
+  fi
+  kernel=${kernels[-1]}
+
+  build_uki "$ESP_PATH/EFI/Linux/omyvoid-current.efi" "$OMYVOID_ROOT_SUBVOLUME" "" yes "$kernel"
+  build_uki "$ESP_PATH/EFI/Linux/omyvoid-fallback.efi" "$OMYVOID_ROOT_SUBVOLUME" "omyvoid.recovery=1" no "$kernel"
+fi
+
+tmp=$(mktemp "$ESP_PATH/.limine.conf.XXXXXX")
+cleanup() { rm -f "$tmp"; }
+trap cleanup EXIT
+cat "$OMYVOID_PATH/default/limine/limine.conf" > "$tmp"
+
+cat >> "$tmp" <<'EOF'
+/Omyvoid
+protocol: efi
+path: boot():/EFI/Linux/omyvoid-current.efi
+
+/Omyvoid fallback / recovery
+protocol: efi
+path: boot():/EFI/Linux/omyvoid-fallback.efi
+
+EOF
+
+mapfile -t snapshot_ukis < <(find "$ESP_PATH/EFI/Linux" -maxdepth 1 -type f -name 'omyvoid-snapshot-*.efi' -printf '%f\n' | sort -V)
+if (( ${#snapshot_ukis[@]} > 0 )); then
+  echo '/Snapshots' >> "$tmp"
+  for uki in "${snapshot_ukis[@]}"; do
+    id=${uki#omyvoid-snapshot-}
+    id=${id%.efi}
+    title="Snapshot $id"
+    meta="$ESP_PATH/EFI/Linux/omyvoid-snapshot-$id.meta"
+    [[ -s $meta ]] && title=$(head -n 1 "$meta")
+    cat >> "$tmp" <<EOF
+//$title
+protocol: efi
+path: boot():/EFI/Linux/$uki
+
+EOF
+  done
+fi
+
+if [[ -n ${OMYVOID_WINDOWS_EFI_UUID:-} ]]; then
+  cat >> "$tmp" <<EOF
+/Windows Boot Manager
+protocol: efi
+path: guid($OMYVOID_WINDOWS_EFI_UUID):${OMYVOID_WINDOWS_EFI_PATH:-/EFI/Microsoft/Boot/bootmgfw.efi}
+
+EOF
+fi
+
+declare -A ignored_efi=(
+  [BOOT]=1
+  [Linux]=1
+  [Microsoft]=1
+  [Omyvoid]=1
+)
+shopt -s nullglob
+for loader in "$ESP_PATH"/EFI/*/*.efi; do
+  relative=${loader#"$ESP_PATH"}
+  vendor=${relative#/EFI/}
+  vendor=${vendor%%/*}
+  [[ -z ${ignored_efi[$vendor]:-} ]] || continue
+  title=${vendor//_/ }
+  cat >> "$tmp" <<EOF
+/$title
+protocol: efi
+path: boot():$relative
+
+EOF
+done
+
+mv -f "$tmp" "$ESP_PATH/limine.conf"
+trap - EXIT
+echo "Updated $ESP_PATH/limine.conf and Omyvoid UKIs for kernel $kernel"

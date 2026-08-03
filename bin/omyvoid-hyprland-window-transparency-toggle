@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggles transparency for the currently focused window.
+
+addr=$(hyprctl activewindow -j | jq -r '.address')
+
+# Pass the exact arguments recommended for Hyprland 0.53+ without the 'lock' parameter
+hyprctl dispatch setprop active opaque toggle >/dev/null 2>&1

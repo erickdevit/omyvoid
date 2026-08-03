@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=Explain how Node command-line tools must be packaged for Omyvoid
+# omyvoid:args=<package> [command-name]
+
+package=${1:-}
+[[ -n $package ]] || { echo 'Usage: omyvoid-npm-install <package> [command-name]' >&2; exit 2; }
+
+echo "Omyvoid does not install standalone npm executables: $package" >&2
+echo 'Create or enable an Omyvoid xbps-src template and install its XBPS package.' >&2
+exit 1

@@ -1,4 +1,3 @@
-import os
 import shutil
 
 from gi import require_version
@@ -14,10 +13,7 @@ class SendViaLocalSendAction(GObject.GObject, Nautilus.MenuProvider):
         if not command:
             return
 
-        if command[-1] == "@@":
-            command = command + paths + ["@@"]
-        else:
-            command = command + paths
+        command = command + paths
 
         Gio.Subprocess.new(command, Gio.SubprocessFlags.NONE)
 
@@ -26,24 +22,7 @@ class SendViaLocalSendAction(GObject.GObject, Nautilus.MenuProvider):
         if localsend:
             return [localsend, "--headless", "send"]
 
-        flatpak = shutil.which("flatpak")
-        if flatpak and self._has_flatpak_app(flatpak, "org.localsend.localsend_app"):
-            return [
-                flatpak,
-                "run",
-                "--file-forwarding",
-                "org.localsend.localsend_app",
-                "@@",
-            ]
-
         return None
-
-    def _has_flatpak_app(self, flatpak, app_id):
-        process = Gio.Subprocess.new(
-            [flatpak, "info", app_id],
-            Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE,
-        )
-        return process.wait_check()
 
     def _selected_paths(self, files):
         paths = []

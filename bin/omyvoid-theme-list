@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=List available themes
+# omyvoid:examples=omyvoid theme list | omyvoid theme set "Tokyo Night"
+
+{
+  find ~/.config/omyvoid/themes/ -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf '%f\n'
+  find "$OMYVOID_PATH/themes/" -mindepth 1 -maxdepth 1 -type d -printf '%f\n'
+} | sort -u | while read -r name; do
+  echo "$name" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'
+done

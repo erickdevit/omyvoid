@@ -1,4 +1,4 @@
-@import "../omybuntu/current/theme/waybar.css";
+@import "../omyvoid/current/theme/waybar.css";
 
 * {
   background-color: @background;
@@ -33,13 +33,13 @@
 #cpu,
 #battery,
 #pulseaudio,
-#custom-omybuntu,
+#custom-omyvoid,
 #custom-update {
   min-width: 12px;
   margin: 0 7.5px;
 }
 
-#custom-omybuntu {
+#custom-omyvoid {
   font-family: 'icomoon';
   font-size: 16px;
 }
@@ -127,7 +127,7 @@ tooltip {
 .left #cpu, .right #cpu,
 .left #battery, .right #battery,
 .left #pulseaudio, .right #pulseaudio,
-.left #custom-omybuntu, .right #custom-omybuntu,
+.left #custom-omyvoid, .right #custom-omyvoid,
 .left #custom-update, .right #custom-update {
   margin: 1.5px 0;
   padding: 6px 0;

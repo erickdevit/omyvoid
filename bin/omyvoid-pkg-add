@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# omyvoid:summary=Install Void packages if they are missing
+# omyvoid:args=<packages...>
+# omyvoid:examples=omyvoid pkg add jq ripgrep
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
+trap 'echo -e "\n❌ Cancelled by user." >&2; exit 130' INT
+
+# 1. Collect all missing packages
+missing_pkgs=()
+for pkg in "$@"; do
+  if omyvoid-pkg-missing "$pkg"; then
+    missing_pkgs+=("$pkg")
+  fi
+done
+
+if (( ${#missing_pkgs[@]} == 0 )); then
+  exit 0
+fi
+
+# 2. Try to install all missing packages in a single XBPS transaction
+echo "Installing packages in batch: ${missing_pkgs[*]}..."
+if sudo xbps-install -Sy "${missing_pkgs[@]}"; then
+  exit 0
+fi
+
+# 3. Fallback: if batch install fails, install one-by-one
+echo "Batch install failed or some packages are unavailable in the configured XBPS repositories. Falling back to individual installation..."
+failed_pkgs=()
+for pkg in "${missing_pkgs[@]}"; do
+  if omyvoid-pkg-missing "$pkg"; then
+    echo "Installing $pkg..."
+    if sudo xbps-install -Sy "$pkg"; then
+      continue
+    else
+      ret=$?
+      if (( ret == 130 )); then exit 130; fi
+      echo -e "\033[33mWarning: Package '$pkg' is unavailable in the configured XBPS repositories.\033[0m" >&2
+      failed_pkgs+=("$pkg")
+    fi
+  fi
+done
+
+if (( ${#failed_pkgs[@]} > 0 )); then
+  echo "XBPS could not install: ${failed_pkgs[*]}" >&2
+  exit 1
+fi

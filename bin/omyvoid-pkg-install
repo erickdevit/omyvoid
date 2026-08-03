@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# omyvoid:summary=Show a fuzzy-finder TUI for selecting XBPS packages to install.
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
+
+fzf_args=(
+  --multi
+  --preview 'xbps-query -RS {1} 2>/dev/null || echo "No preview available"'
+  --preview-label='alt-p: toggle description, alt-j/k: scroll, tab: multi-select'
+  --preview-label-pos='bottom'
+  --preview-window 'down:65%:wrap'
+  --bind 'alt-p:toggle-preview'
+  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
+  --bind 'alt-k:preview-up,alt-j:preview-down'
+  --color 'pointer:green,marker:green'
+)
+
+pkg_names=$(xbps-query -Rs '*' | awk '{print $2}' | sed -E 's/-[0-9][^-]*_[0-9]+$//' | sort -u | fzf "${fzf_args[@]}" || true)
+
+if [[ -n $pkg_names ]]; then
+  source omyvoid-sudo-keepalive
+
+  # Pass selections to omyvoid-pkg-add
+  echo "$pkg_names" | xargs omyvoid-pkg-add
+  omyvoid-show-done
+  echo "✅ Success: Packages installed."
+fi

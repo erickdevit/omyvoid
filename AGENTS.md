@@ -10,9 +10,9 @@
 
 # Command Naming
 
-All commands start with `omybuntu-`. Prefixes indicate purpose.
+All commands start with `omyvoid-`. Prefixes indicate purpose.
 
-The authoritative command group list lives in `bin/omybuntu` in `GROUP_DESCRIPTIONS`. Keep `GROUP_DESCRIPTIONS` updated when adding a new command prefix.
+The authoritative command group list lives in `bin/omyvoid` in `GROUP_DESCRIPTIONS`. Keep `GROUP_DESCRIPTIONS` updated when adding a new command prefix.
 
 Common prefixes include:
 
@@ -35,29 +35,29 @@ Other current prefixes include:
 
 # Command Metadata
 
-Commands in `bin/` can declare CLI metadata in comments near the top of the file. `bin/omybuntu` scans the first 80 lines, and tests expect command metadata to remain valid.
+Commands in `bin/` can declare CLI metadata in comments near the top of the file. `bin/omyvoid` scans the first 80 lines, and tests expect command metadata to remain valid.
 
 Supported metadata keys:
 
-- `# omybuntu:summary=...` - short help text
-- `# omybuntu:group=...` - command group when it differs from the filename-derived prefix
-- `# omybuntu:name=...` - command name within the group
-- `# omybuntu:args=...` - usage arguments
-- `# omybuntu:examples=...` - examples separated with ` | `
-- `# omybuntu:alias=...` / `# omybuntu:aliases=...` - alternate routes
-- `# omybuntu:hidden=true` - hide from default command listings
-- `# omybuntu:requires-sudo=true` - mark commands that require sudo
+- `# omyvoid:summary=...` - short help text
+- `# omyvoid:group=...` - command group when it differs from the filename-derived prefix
+- `# omyvoid:name=...` - command name within the group
+- `# omyvoid:args=...` - usage arguments
+- `# omyvoid:examples=...` - examples separated with ` | `
+- `# omyvoid:alias=...` / `# omyvoid:aliases=...` - alternate routes
+- `# omyvoid:hidden=true` - hide from default command listings
+- `# omyvoid:requires-sudo=true` - mark commands that require sudo
 
 Prefer explicit metadata for user-facing commands. Keep routes consistent with the filename unless there is a deliberate alias or compatibility route.
 
 Example:
 
 ```bash
-# omybuntu:summary=Take a screenshot
-# omybuntu:group=capture
-# omybuntu:args=[smart|region|windows|fullscreen] [slurp|copy]
-# omybuntu:examples=omybuntu screenshot | omybuntu capture screenshot region
-# omybuntu:aliases=omybuntu screenshot
+# omyvoid:summary=Take a screenshot
+# omyvoid:group=capture
+# omyvoid:args=[smart|region|windows|fullscreen] [slurp|copy]
+# omyvoid:examples=omyvoid screenshot | omyvoid capture screenshot region
+# omyvoid:aliases=omyvoid screenshot
 ```
 
 # Install Scripts
@@ -67,24 +67,24 @@ Install entry points (`install.sh`, `boot.sh`) use `#!/bin/bash`. Many scripts u
 Install stage files follow this pattern:
 
 - `install/*/all.sh` lists scripts in execution order
-- leaf scripts are sourced by `run_logged $OMYBUNTU_INSTALL/path/to/script.sh`
+- leaf scripts are sourced by `run_logged $OMYVOID_INSTALL/path/to/script.sh`
 - avoid `exit` in sourced install scripts unless intentionally aborting the install
-- use `$OMYBUNTU_INSTALL` and `$OMYBUNTU_PATH` instead of hard-coded Omybuntu paths
+- use `$OMYVOID_INSTALL` and `$OMYVOID_PATH` instead of hard-coded Omyvoid paths
 - keep hardware-specific logic under `install/config/hardware/`
 - prefer helper commands for package and command checks where available
 
-Raw `command -v`, `apt`, `snap`, and `flatpak` are acceptable in bootstrap/preflight/package-helper contexts where the helper commands may not be available yet or where direct package-manager behavior is the point of the script.
+Raw `command -v` and `xbps-*` are acceptable in bootstrap, preflight, and package-helper contexts where the helper commands may not be available yet or where direct XBPS behavior is the point of the script.
 
 # Helper Commands
 
 Use these instead of raw shell commands:
 
-- `omybuntu-cmd-missing` / `omybuntu-cmd-present` - check for commands
-- `omybuntu-pkg-missing` / `omybuntu-pkg-present` - check for packages
-- `omybuntu-pkg-add` - install packages (handles apt, snap, and flatpak)
-- `omybuntu-pkg-drop` - remove packages; use this instead of raw `apt remove`, `snap remove`, or `flatpak uninstall`
-- `omybuntu-notification-send` - send desktop notifications; do not call `notify-send` directly
-- `omybuntu-hw-asus-rog` - detect ASUS ROG hardware (and similar `hw-*` commands)
+- `omyvoid-cmd-missing` / `omyvoid-cmd-present` - check for commands
+- `omyvoid-pkg-missing` / `omyvoid-pkg-present` - check for packages
+- `omyvoid-pkg-add` - install packages through XBPS
+- `omyvoid-pkg-drop` - remove packages through XBPS; use this instead of raw `xbps-remove`
+- `omyvoid-notification-send` - send desktop notifications; do not call `notify-send` directly
+- `omyvoid-hw-asus-rog` - detect ASUS ROG hardware (and similar `hw-*` commands)
 
 Exceptions are allowed for bootstrap, preflight, migration, and package-helper scripts where the helper may not be available yet, where the helper itself is being implemented, or where direct package-manager behavior is required.
 
@@ -96,7 +96,7 @@ Exceptions are allowed for bootstrap, preflight, migration, and package-helper s
 
 # Visual Changes
 
-When making visual changes, such as Waybar styles or desktop appearance, always take and analyze a screenshot after applying the change to verify the result. Use `omybuntu capture screenshot fullscreen save` for fullscreen screenshots.
+When making visual changes, such as Waybar styles or desktop appearance, always take and analyze a screenshot after applying the change to verify the result. Use `omyvoid capture screenshot fullscreen save` for fullscreen screenshots.
 
 For interactive UI work, use `wtype` to simulate keyboard input when available. Example: start the UI in the background, wait briefly for focus, then run `wtype -k Right -k Return` to exercise keyboard selection and confirm the resulting command output or state change. Prefer this over manual-only verification when a UI returns a selected value or changes a symlink/config.
 
@@ -107,31 +107,31 @@ When testing layer-shell UI, capture the reference and candidate states as separ
 To copy a default config to user config with automatic backup:
 
 ```bash
-omybuntu-refresh-config hypr/hyprlock.conf
+omyvoid-refresh-config hypr/hyprlock.conf
 ```
 
-This copies `~/.local/share/omybuntu/config/hypr/hyprlock.conf` to `~/.config/hypr/hyprlock.conf`.
+This copies `~/.local/share/omyvoid/config/hypr/hyprlock.conf` to `~/.config/hypr/hyprlock.conf`.
 
 # Migrations
 
-To create a new migration, run `omybuntu-dev-add-migration --no-edit`. This creates a migration file named after the unix timestamp of the last commit.
+To create a new migration, run `omyvoid-dev-add-migration --no-edit`. This creates a migration file named after the unix timestamp of the last commit.
 
 New migration format:
 - File permissions must be `0644` (`-rw-r--r--`); migrations are sourced, not executed directly
 - No shebang line
 - Start with an `echo` describing what the migration does
-- Use `$OMYBUNTU_PATH` to reference the omybuntu directory
-- Prefer helper commands such as `omybuntu-cmd-present`, `omybuntu-cmd-missing`, `omybuntu-pkg-present`, and `omybuntu-pkg-missing`
+- Use `$OMYVOID_PATH` to reference the omyvoid directory
+- Prefer helper commands such as `omyvoid-cmd-present`, `omyvoid-cmd-missing`, `omyvoid-pkg-present`, and `omyvoid-pkg-missing`
 
-Some older migrations predate these rules. Do not copy older migrations that start with shebangs, omit the leading `echo`, or hard-code `~/.local/share/omybuntu`.
+Some older migrations predate these rules. Do not copy older migrations that start with shebangs, omit the leading `echo`, or hard-code `~/.local/share/omyvoid`.
 
-Migrations may use raw `apt`, `snap`, `flatpak`, `command -v`, or direct config edits when needed for historical compatibility or one-off repair work.
+Migrations may use raw `xbps-*`, `command -v`, or direct config edits when needed for historical compatibility or one-off repair work.
 
 Example:
 ```bash
 echo "Disable fingerprint in hyprlock if fingerprint auth is not configured"
 
-if omybuntu-cmd-missing fprintd-list || ! fprintd-list "$USER" 2>/dev/null | grep -q "finger"; then
+if omyvoid-cmd-missing fprintd-list || ! fprintd-list "$USER" 2>/dev/null | grep -q "finger"; then
   sed -i 's/fingerprint:enabled = .*/fingerprint:enabled = false/' ~/.config/hypr/hyprlock.conf
 fi
 ```
@@ -139,7 +139,7 @@ fi
 # Porting from Omarchy
 
 - Look exactly at how Omarchy originally implemented scripts and features. Nothing should be reinvented unless extremely necessary.
-  - **Exception (Hyprland Configuration):** While Omarchy has migrated to `.lua` files for Hyprland configuration, Omybuntu will continue to use the legacy `.conf` format until the `hyprland` package in Ubuntu officially updates and fully supports Lua plugins/configurations. Do NOT migrate `.conf` to `.lua`.
+  - **Exception (Hyprland Configuration):** Omyvoid keeps the inherited `.conf` configuration until its Void/Blackhole-VL package set and plugins are validated against the Lua configuration. Do not migrate `.conf` to `.lua` as an unrelated change.
 - If an existing feature is broken, find and fix the root cause of why the Omarchy implementation is failing instead of rewriting it from scratch.
 - You must ask for permission from the user before reinventing or rewriting any script.
 
@@ -161,8 +161,8 @@ fi
 
 - Localization files live under `default/i18n/` (e.g., `en.sh`, `es.sh`, `pt-br.sh`).
 - User-facing scripts must load the translations early using:
-  `source "${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}/default/i18n/init.sh"`
-- Localize all walker menus, interactive gum prompts/choose dialogs, and desktop notifications (using `omybuntu-notification-send`).
+  `source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"`
+- Localize all walker menus, interactive gum prompts/choose dialogs, and desktop notifications (using `omyvoid-notification-send`).
 - Proper nouns, brand abbreviations (such as "Web App" and "TUI"), and hardware-specific CLI parameters (such as haptic options "low", "mid", "high") must remain in English across all translation files.
 - Prioritize user-facing GUI elements and notifications. Non-interactive terminal-only stdout/stderr logs can remain in English unless they are critical setup alerts.
 

@@ -1,16 +1,9 @@
-# Ensure iwd and NetworkManager services will be started
-sudo systemctl enable iwd.service
-sudo systemctl enable NetworkManager.service
-
-# Configure Netplan to use NetworkManager for all interfaces
-sudo mkdir -p /etc/netplan
-cat <<EOF | sudo tee /etc/netplan/01-network-manager-all.yaml >/dev/null
-network:
-  version: 2
-  renderer: NetworkManager
+# NetworkManager uses iwd as its Wi-Fi backend and is supervised by runit.
+sudo mkdir -p /etc/NetworkManager/conf.d
+cat <<EOF | sudo tee /etc/NetworkManager/conf.d/10-omyvoid-wifi.conf >/dev/null
+[device]
+wifi.backend=iwd
 EOF
 
-# Prevent systemd-networkd-wait-online timeout on boot
-sudo systemctl disable systemd-networkd-wait-online.service
-sudo systemctl mask systemd-networkd-wait-online.service
-
+chrootable_runit_enable dbus
+chrootable_runit_enable NetworkManager

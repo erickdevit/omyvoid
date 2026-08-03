@@ -1,4 +1,4 @@
-/* Omybuntu Theme for Obsidian */
+/* Omyvoid Theme for Obsidian */
 
 .theme-dark, .theme-light {
   /* Core colors */

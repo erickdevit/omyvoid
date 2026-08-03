@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve Omybuntu
+about: Create a report to help us improve Omyvoid
 title: '[BUG] '
 labels: bug
 assignees: ''
@@ -22,7 +22,7 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots or screencasts to help explain your problem. Visual bugs REQUIRE visual proof.
 
 **System Information:**
- - OS: Ubuntu [e.g. 24.04]
+ - OS: Void Linux x86_64-glibc
  - Display Server: Wayland (Hyprland)
  - Terminal: [e.g. Alacritty, Kitty]
  - App Version: [e.g. commit hash or version number]

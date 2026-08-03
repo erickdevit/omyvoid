@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle Waybar visibility
+# omyvoid:examples=omyvoid toggle waybar
+
+omyvoid-toggle waybar-off
+
+if pgrep -x waybar >/dev/null; then
+  pkill -x waybar
+else
+  waybar >/dev/null 2>&1 &
+fi

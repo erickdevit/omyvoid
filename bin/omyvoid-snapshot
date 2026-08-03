@@ -1,0 +1,193 @@
+#!/bin/bash
+
+# omyvoid:summary=Create, boot and restore Btrfs system snapshots with Snapper and Limine
+# omyvoid:args=<create|list|restore|undo|sync|notify> [snapshot-id]
+# omyvoid:examples=omyvoid snapshot create | omyvoid snapshot list | omyvoid snapshot restore 5 | omyvoid snapshot undo
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+command=${1:-}
+shift || true
+[[ -n $command ]] || { echo "Usage: omyvoid snapshot <create|list|restore|undo|sync|notify> [snapshot-id]" >&2; exit 2; }
+
+run_snapper() {
+  sudo snapper --no-dbus -c root "$@"
+}
+
+root_device() {
+  if [[ -n ${OMYVOID_ROOT_DEVICE_OVERRIDE:-} ]]; then
+    echo "$OMYVOID_ROOT_DEVICE_OVERRIDE"
+    return
+  fi
+  source /etc/default/limine
+  if [[ -n ${OMYVOID_LUKS_UUID:-} ]]; then
+    echo /dev/mapper/omyvoid_crypt
+  else
+    echo "/dev/disk/by-uuid/$OMYVOID_ROOT_UUID"
+  fi
+}
+
+choose_snapshot() {
+  local requested=${1:-}
+  if [[ -n $requested ]]; then
+    printf '%s' "$requested"
+    return
+  fi
+
+  local booted
+  booted=$(sed -n 's/.*omyvoid\.snapshot=\([0-9][0-9]*\).*/\1/p' /proc/cmdline)
+  if [[ -n $booted ]]; then
+    printf '%s' "$booted"
+    return
+  fi
+
+  mapfile -t choices < <(run_snapper list --columns number,date,description | awk '$1 ~ /^[0-9]+$/ {print}')
+  (( ${#choices[@]} > 0 )) || { echo "No snapshots are available" >&2; return 1; }
+  command -v gum >/dev/null || { echo "Pass a snapshot id: omyvoid snapshot restore <id>" >&2; return 1; }
+  local selected
+  selected=$(printf '%s\n' "${choices[@]}" | gum choose)
+  awk '{print $1}' <<<"$selected"
+}
+
+sync_boot_entries() {
+  mapfile -t valid_ids < <(run_snapper --csvout list | awk -F, 'NR > 1 {gsub(/\"/, "", $1); if ($1 ~ /^[0-9]+$/) print $1}')
+  declare -A valid=()
+  local id file
+  for id in "${valid_ids[@]}"; do valid[$id]=1; done
+  shopt -s nullglob
+  for file in /boot/EFI/Linux/omyvoid-snapshot-*.efi; do
+    id=${file##*omyvoid-snapshot-}
+    id=${id%.efi}
+    if [[ -z ${valid[$id]:-} ]]; then
+      sudo rm -f "$file" "/boot/EFI/Linux/omyvoid-snapshot-$id.meta"
+    fi
+  done
+  sudo omyvoid-boot-refresh --menu-only
+}
+
+refresh_boot_for_root() (
+  set -e
+  local root=$1
+  local mounts=("$root/run" "$root/sys" "$root/proc" "$root/dev" "$root/boot")
+
+  cleanup_boot_mounts() {
+    local mountpoint
+    for mountpoint in "${mounts[@]}"; do
+      sudo umount -R "$mountpoint" 2>/dev/null || true
+    done
+  }
+  trap cleanup_boot_mounts EXIT
+
+  sudo mkdir -p "${mounts[@]}"
+  sudo mount --bind /boot "$root/boot"
+  for mountpoint in dev proc sys run; do
+    sudo mount --rbind "/$mountpoint" "$root/$mountpoint"
+    sudo mount --make-rslave "$root/$mountpoint"
+  done
+  sudo chroot "$root" /usr/local/bin/omyvoid-boot-refresh
+)
+
+restore_snapshot() (
+  set -e
+  local id=$1
+  [[ $id =~ ^[0-9]+$ ]] || { echo "Invalid snapshot id: $id" >&2; exit 2; }
+  run_snapper list --columns number | awk '{print $1}' | grep -qx "$id" || {
+    echo "Snapshot $id does not exist" >&2
+    exit 1
+  }
+
+  local device top stamp selected staged recovery state_dir
+  device=$(root_device)
+  top=$(sudo mktemp -d /run/omyvoid-restore.XXXXXX)
+  stamp=$(date +%Y%m%d%H%M%S)
+  selected="$top/@snapshots/$id/snapshot"
+  staged="$top/@.restore-$stamp"
+  recovery="@recovery-$stamp"
+
+  cleanup_restore() {
+    sudo umount "$top" 2>/dev/null || true
+    sudo rmdir "$top" 2>/dev/null || true
+  }
+  trap cleanup_restore EXIT
+  sudo mount -o subvolid=5 "$device" "$top"
+  [[ -d $selected ]] || { echo "Snapshot subvolume not found: $selected" >&2; return 1; }
+  [[ -d $top/@ ]] || { echo "Root subvolume @ was not found" >&2; return 1; }
+
+  sudo btrfs subvolume snapshot "$selected" "$staged"
+  sudo mv "$top/@" "$top/$recovery"
+  sudo mv "$staged" "$top/@"
+
+  state_dir="$top/@/var/lib/omyvoid"
+  sudo mkdir -p "$state_dir"
+  printf 'RECOVERY_SUBVOLUME=%q\nRESTORED_SNAPSHOT=%q\n' \
+    "$recovery" "$id" | sudo tee "$state_dir/snapshot-undo" >/dev/null
+  refresh_boot_for_root "$top/@"
+  echo "Snapshot $id is ready. Reboot to enter the restored system."
+)
+
+undo_restore() (
+  set -e
+  local state=/var/lib/omyvoid/snapshot-undo
+  [[ -f $state ]] || { echo "No snapshot restoration is available to undo" >&2; exit 1; }
+  # shellcheck disable=SC1090
+  source "$state"
+
+  local device top stamp failed
+  device=$(root_device)
+  top=$(sudo mktemp -d /run/omyvoid-undo.XXXXXX)
+  stamp=$(date +%Y%m%d%H%M%S)
+  failed="@failed-restore-$stamp"
+  cleanup_undo() {
+    sudo umount "$top" 2>/dev/null || true
+    sudo rmdir "$top" 2>/dev/null || true
+  }
+  trap cleanup_undo EXIT
+  sudo mount -o subvolid=5 "$device" "$top"
+  [[ -d $top/$RECOVERY_SUBVOLUME ]] || { echo "Recovery subvolume is missing" >&2; return 1; }
+
+  sudo mv "$top/@" "$top/$failed"
+  sudo mv "$top/$RECOVERY_SUBVOLUME" "$top/@"
+  sudo rm -f "$top/@/var/lib/omyvoid/snapshot-undo"
+  refresh_boot_for_root "$top/@"
+  echo "The previous root was restored. Reboot to complete the undo."
+)
+
+case "$command" in
+create)
+  description=$(omyvoid-version 2>/dev/null || echo unknown)
+  echo "Creating Omyvoid system snapshot..."
+  id=$(run_snapper create --type single --cleanup-algorithm number --description "$description" --print-number)
+  run_snapper cleanup number
+  sudo omyvoid-boot-snapshot-build "$id"
+  sync_boot_entries
+  echo "Created bootable snapshot $id"
+  ;;
+list)
+  run_snapper list
+  ;;
+restore)
+  id=$(choose_snapshot "${1:-}")
+  restore_snapshot "$id"
+  ;;
+undo)
+  undo_restore
+  ;;
+sync)
+  sync_boot_entries
+  ;;
+notify)
+  id=$(sed -n 's/.*omyvoid\.snapshot=\([0-9][0-9]*\).*/\1/p' /proc/cmdline)
+  [[ -n $id ]] || exit 0
+  action=$(notify-send --app-name Omyvoid --action=restore="Restore snapshot" --action=continue="Continue temporarily" \
+    "Omyvoid snapshot $id" "This is a temporary boot. Restore it to make the snapshot permanent." || true)
+  if [[ $action == "restore" ]]; then
+    terminal=${TERMINAL:-ghostty}
+    "$terminal" -e sudo omyvoid snapshot restore "$id" &
+  fi
+  ;;
+*)
+  echo "Unknown snapshot command: $command" >&2
+  exit 2
+  ;;
+esac

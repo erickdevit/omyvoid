@@ -1,0 +1,23 @@
+Omyvoid notices and provenance
+==============================
+
+This repository was initialized from a source snapshot of Omybuntu:
+
+  Project: https://github.com/erickdevit/omybuntu
+  Commit:  9e89dd355c48ef74eeead1ccf5a677d15293c826
+
+The snapshot was imported as a new root commit without the upstream Git
+history. Omybuntu itself is a port of Omarchy:
+
+  Project: https://github.com/basecamp/omarchy
+
+Omyvoid keeps attribution to those projects and their contributors. Files
+derived from them remain subject to the license notices in their source.
+
+Void Linux, XBPS, runit, Btrfs, dracut, Limine, Snapper, Hyprland and other
+packaged components are independent projects and retain their respective
+licenses and trademarks.
+
+The Osaka Jade Limine wallpaper in default/limine/omyvoid-boot.png was derived
+from the Omyvoid boot artwork approved for this project. It is a boot artifact
+and is not offered as an additional desktop wallpaper.

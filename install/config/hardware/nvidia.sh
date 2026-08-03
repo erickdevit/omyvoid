@@ -1,9 +1,9 @@
 if lspci | grep -qi 'nvidia'; then
-  if omybuntu-hw-nvidia-gsp; then
-    PACKAGES=(nvidia-driver nvidia-utils-common)
+  if omyvoid-hw-nvidia-gsp; then
+    PACKAGES=(nvidia nvidia-libs)
     GPU_ARCH="turing_plus"
-  elif omybuntu-hw-nvidia-without-gsp; then
-    PACKAGES=(nvidia-driver)
+  elif omyvoid-hw-nvidia-without-gsp; then
+    PACKAGES=(nvidia470 nvidia470-libs)
     GPU_ARCH="maxwell_pascal_volta"
   fi
 
@@ -13,21 +13,16 @@ if lspci | grep -qi 'nvidia'; then
     return 0 2>/dev/null || exit 0
   fi
 
-  omybuntu-pkg-add "${PACKAGES[@]}"
+  omyvoid-pkg-add "${PACKAGES[@]}"
 
   # Configure modprobe for early KMS
   sudo tee /etc/modprobe.d/nvidia.conf <<EOF > /dev/null
 options nvidia_drm modeset=1
 EOF
 
-  # Configure initramfs for early loading (Ubuntu uses update-initramfs, not mkinitcpio)
-  if [[ ! -f /etc/initramfs-tools/modules ]]; then
-    sudo touch /etc/initramfs-tools/modules
-  fi
-  for mod in nvidia nvidia_modeset nvidia_uvm nvidia_drm; do
-    grep -qxF "$mod" /etc/initramfs-tools/modules || echo "$mod" | sudo tee -a /etc/initramfs-tools/modules > /dev/null
-  done
-  sudo update-initramfs -u
+  sudo tee /etc/dracut.conf.d/50-omyvoid-nvidia.conf >/dev/null <<'EOF'
+add_drivers+=" nvidia nvidia_modeset nvidia_uvm nvidia_drm "
+EOF
 
   # Add NVIDIA environment variables based on GPU architecture
   if [[ $GPU_ARCH = "turing_plus" ]]; then

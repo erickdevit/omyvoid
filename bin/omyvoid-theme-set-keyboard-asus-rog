@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# omyvoid:summary=Apply the current theme keyboard color to ASUS ROG keyboards
+# omyvoid:hidden=true
+
+ASUSCTL_THEME=~/.config/omyvoid/current/theme/keyboard.rgb
+
+if omyvoid-cmd-present asusctl; then
+  asusctl aura effect static -c $(sed 's/^#//' $ASUSCTL_THEME)
+fi

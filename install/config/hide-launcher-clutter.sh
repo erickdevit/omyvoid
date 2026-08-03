@@ -48,10 +48,10 @@ while IFS= read -r -d '' desktop; do
 done < <(sudo find /usr/share/applications /usr/local/share/applications \
   -maxdepth 1 -type f \( -iname "*magick*.desktop" -o -iname "*im6*.desktop" \) -print0 2>/dev/null || true)
 
-if omybuntu-pkg-present foot; then
-  omybuntu-pkg-drop foot
+if omyvoid-pkg-present foot; then
+  omyvoid-pkg-drop foot
 fi
 
-if omybuntu-pkg-present papers; then
-  omybuntu-pkg-drop papers
+if omyvoid-pkg-present papers; then
+  omyvoid-pkg-drop papers
 fi

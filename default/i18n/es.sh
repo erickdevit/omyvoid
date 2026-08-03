@@ -10,10 +10,6 @@ export I18N_CANCEL="Cancelar"
 export I18N_DONE_PRESS_KEY="¡Completado! Presione cualquier tecla para cerrar..."
 export I18N_ERROR_PRESS_KEY="¡Error! Presione cualquier tecla para cerrar..."
 
-# GRUB theme
-export I18N_GRUB_SELECT_OS="Seleccione el sistema operativo"
-export I18N_GRUB_FOOTER="v - Seleccionar    Enter - Iniciar    e - Editar    c - Terminal"
-
 # Go / Main Menu
 export I18N_MENU_GO="Ir a"
 export I18N_OPT_APPS="󰀻  Aplicaciones"
@@ -31,11 +27,11 @@ export I18N_OPT_SYSTEM="  Sistema"
 export I18N_MENU_LEARN="Aprender"
 export I18N_LEARN_KEYBINDINGS="  Atajos de teclado"
 export I18N_LEARN_TMUX="  Atajos de Tmux"
-export I18N_LEARN_OMYBUNTU="  Omybuntu"
+export I18N_LEARN_OMYVOID="  Omyvoid"
 export I18N_LEARN_HYPRLAND="  Hyprland"
 export I18N_LEARN_NEOVIM="  Neovim"
 export I18N_LEARN_BASH="󱆃  Bash"
-export I18N_LEARN_UBUNTU="󰕈  Ubuntu"
+export I18N_LEARN_VOID="󰕈  Void Linux"
 
 # Trigger Menu
 export I18N_MENU_TRIGGER="Acciones"
@@ -180,8 +176,6 @@ export I18N_SYS_DISABLE_HIBERNATE="󰤁  Deshabilitar Hibernación"
 # Install Menu
 export I18N_MENU_INSTALL="Instalar"
 export I18N_INS_PACKAGES="󰣇  Paquetes"
-export I18N_INS_SNAPS="󰣇  Snaps"
-export I18N_INS_FLATPAKS="󰣇  Flatpaks"
 export I18N_INS_WEBAPP="  Web App"
 export I18N_INS_TUI="  TUI"
 export I18N_INS_SERVICE="  Servicio"
@@ -221,7 +215,7 @@ export I18N_REM_SECURITY="  Seguridad"
 
 # Update Menu
 export I18N_MENU_UPDATE="Actualizar"
-export I18N_UPD_OMYBUNTU="  Omybuntu"
+export I18N_UPD_OMYVOID="  Omyvoid"
 export I18N_UPD_CHANNEL="󰔫  Canal"
 export I18N_UPD_CONFIG="  Configuración"
 export I18N_UPD_THEMES="󰸌  Temas Extras"
@@ -276,7 +270,7 @@ export I18N_DRIVE_SELECT_HEADER="Seleccione el disco"
 export I18N_HIBERNATION_REMOVE_WARN="¿Eliminar la configuración de hibernación?"
 export I18N_HIBERNATION_SETUP_WARN="¿Usar %s en el disco de arranque para habilitar la hibernación?"
 export I18N_HIBERNATION_REBOOT_WARN="¿Reiniciar para habilitar la hibernación?"
-export I18N_DIRECT_BOOT_DISABLE="¿Desactivar direct boot (eliminar entrada EFI de Omybuntu)?"
+export I18N_DIRECT_BOOT_DISABLE="¿Desactivar direct boot (eliminar entrada EFI de Omyvoid)?"
 export I18N_DIRECT_BOOT_SETUP="¿Configurar direct boot (el arranque por snapshot se deberá realizar mediante bios)?"
 export I18N_DIRECT_BOOT_ERR_UNSIGNED_UKI="Direct boot no puede usar una UKI sin firmar mientras Secure Boot está activado."
 export I18N_GPU_HYBRID_ENABLE="¿Activar GPU dedicada y reiniciar?"
@@ -288,14 +282,14 @@ export I18N_BRANDING_PICK_IMAGE="Seleccione un archivo png/svg en %s"
 export I18N_UPD_READY="¿Listo para actualizar?"
 export I18N_UPD_WARN_NO_STOP="• ¡No se puede detener la actualización una vez que comience!"
 export I18N_UPD_WARN_POWER="• Asegúrese de estar conectado a la corriente o de tener la batería cargada"
-export I18N_UPD_WHATS_NEW="Novedades: https://github.com/erickdevit/omybuntu/releases"
+export I18N_UPD_WHATS_NEW="Novedades: https://github.com/erickdevit/omyvoid/releases"
 export I18N_UPD_CANCELLED="Actualización cancelada"
 export I18N_UPD_REBOOT_KERNEL="El kernel de Linux ha sido actualizado. ¿Reiniciar?"
 export I18N_UPD_REBOOT_REQUIRED="Las actualizaciones requieren reiniciar. ¿Listo?"
 export I18N_UPD_REBOOT_HYPRLAND="Hyprland ha sido actualizado. ¿Reiniciar?"
 
 # Installer Checks / Errors
-export I18N_ERR_INSTALL_REQ="La instalación de Omybuntu requiere: %s"
+export I18N_ERR_INSTALL_REQ="La instalación de Omyvoid requiere: %s"
 export I18N_ERR_WHAT_TO_DO="¿Qué le gustaría hacer?"
 export I18N_ERR_RETRY="Reintentar instalación"
 export I18N_ERR_UPLOAD="Subir registro para soporte"
@@ -316,7 +310,7 @@ export I18N_WIN_PASS_PLACEHOLDER="Contraseña (Presione intro para usar la prede
 export I18N_WIN_CONFIRM_PROCEED="¿Proceder con esta configuración?"
 export I18N_WIN_CONFIRM_REMOVE="¿Eliminar la VM de Windows y borrar todos los datos asociados?"
 export I18N_WIN_CONFIG_TITLE="Configuración de la VM de Windows"
-export I18N_WIN_LIFECYCLE_KEEP="La VM seguirá funcionando después de cerrar RDP\nPara detener: omybuntu-windows-vm stop"
+export I18N_WIN_LIFECYCLE_KEEP="La VM seguirá funcionando después de cerrar RDP\nPara detener: omyvoid-windows-vm stop"
 export I18N_WIN_LIFECYCLE_AUTO="La VM se detendrá automáticamente cuando se cierre RDP"
 export I18N_WIN_CONNECTING="Conectando a la VM de Windows"
 
@@ -335,14 +329,14 @@ export I18N_WIN_RDP_CLOSED_STOPPING="Sesión RDP cerrada. Deteniendo la VM de Wi
 export I18N_WIN_STOPPING="Deteniendo la VM de Windows..."
 export I18N_WIN_STOPPED="VM de Windows detenida."
 export I18N_WIN_RDP_CLOSED_KEEP="Sesión RDP cerrada. La VM de Windows sigue en ejecución."
-export I18N_WIN_STOP_INSTRUCTION="Para detenerla: omybuntu-windows-vm stop"
+export I18N_WIN_STOP_INSTRUCTION="Para detenerla: omyvoid-windows-vm stop"
 export I18N_WIN_NOT_CONFIGURED="VM de Windows no configurada."
-export I18N_WIN_START_INSTRUCTION="Para iniciar: omybuntu-windows-vm launch"
+export I18N_WIN_START_INSTRUCTION="Para iniciar: omyvoid-windows-vm launch"
 export I18N_WIN_CONTAINER_NOT_FOUND="Contenedor de la VM de Windows no encontrado."
 export I18N_WIN_STATUS_RUNNING="Estado de la VM de Windows: EN EJECUCIÓN"
 export I18N_WIN_WEB_INTERFACE="Interfaz web: http://127.0.0.1:8006"
 export I18N_WIN_RDP_AVAILABLE="RDP disponible: puerto 3389"
-export I18N_WIN_CONNECT_INSTRUCTION="Para conectar: omybuntu-windows-vm launch"
+export I18N_WIN_CONNECT_INSTRUCTION="Para conectar: omyvoid-windows-vm launch"
 export I18N_WIN_STOPPED_STATUS="La VM de Windows está detenida (estado: %s)"
 export I18N_WIN_STARTING_MSG="Iniciando VM de Windows"
 export I18N_WIN_STARTING_BODY="      Esto puede tardar entre 15 y 30 segundos"
@@ -381,7 +375,7 @@ export I18N_WEBAPP_REMOVE_ERR_NAME="Debe seleccionar al menos una Web App para e
 export I18N_WEBAPP_REMOVE_SUCCESS="Eliminado %s"
 
 # Theme Install
-export I18N_THEME_INSTALL_INTRO="Ver https://manuals.omamix.org/2/the-omybuntu-manual/90/extra-themes"
+export I18N_THEME_INSTALL_INTRO="Ver https://manuals.omamix.org/2/the-omyvoid-manual/90/extra-themes"
 export I18N_THEME_INSTALL_PLACEHOLDER="URL del repositorio Git (https o git@host:org/repo.git)"
 export I18N_THEME_INSTALL_ERR_CLONE="Error: No se pudo clonar el repositorio del tema."
 
@@ -397,7 +391,7 @@ export I18N_SUDO_WARN_5="Cualquier persona o proceso con acceso a su cuenta obte
 export I18N_SUDO_WARN_6="El sudo sin contraseña se desactivará automáticamente después de %d minutos."
 export I18N_SUDO_WARN_7="Ejecute este comando nuevamente para desactivarlo antes."
 export I18N_SUDO_ENABLED="El sudo sin contraseña ha sido ACTIVADO. Se desactivará automáticamente en %d minutos."
-export I18N_SUDO_RESTART_NOTE="Nota: si reinicia antes, ejecute omybuntu-sudo-passwordless de nuevo para desactivarlo."
+export I18N_SUDO_RESTART_NOTE="Nota: si reinicia antes, ejecute omyvoid-sudo-passwordless de nuevo para desactivarlo."
 export I18N_SUDO_ABORTED="Abortado. No se realizaron cambios."
 
 # Monitor TUI
@@ -419,13 +413,12 @@ export I18N_TUI_MONITORS_BACK="Volver al Menú Principal"
 
 # First Run
 export I18N_FIRST_RUN_WELCOME_TITLE="    Aprender Atajos de Teclado"
-export I18N_FIRST_RUN_WELCOME_BODY="Super + K para hoja de trucos.\nSuper + Espacio para el lanzador de aplicaciones.\nSuper + Alt + Espacio para el Menú Omybuntu."
+export I18N_FIRST_RUN_WELCOME_BODY="Super + K para hoja de trucos.\nSuper + Espacio para el lanzador de aplicaciones.\nSuper + Alt + Espacio para el Menú Omyvoid."
 export I18N_FIRST_RUN_UPDATE_TITLE="    Actualizar Sistema"
 export I18N_FIRST_RUN_UPDATE_BODY_NO_NET="Cuando tenga conexión a internet, haga clic para actualizar el sistema."
 export I18N_FIRST_RUN_UPDATE_BODY_WITH_NET="Haga clic para actualizar el sistema."
 export I18N_FIRST_RUN_WIFI_TITLE="󰖩    Haga clic para configurar Wi-Fi"
 export I18N_FIRST_RUN_WIFI_BODY="Tab para navegar, Espacio para seleccionar, ? para ayuda."
-export I18N_REMOVE_GNOME_PROMPT="¿Desea eliminar por completo el entorno de escritorio predeterminado de Ubuntu (GNOME Desktop) y el gestor de inicio de sesión GDM3?"
 
 # Retro games / RetroArch
 export I18N_GAMES_RETRO_CORE_PROMPT="Núcleo de RetroArch"
@@ -526,7 +519,7 @@ export I18N_OSD_AUDIO_NONE="No se encontraron dispositivos de audio"
 
 # First Run
 export I18N_FIRST_RUN_VOXTYPE_TITLE="Instalar Dictado con Voxtype"
-export I18N_FIRST_RUN_VOXTYPE_BODY="Haga clic para instalar el dictado por voz para Omybuntu."
+export I18N_FIRST_RUN_VOXTYPE_BODY="Haga clic para instalar el dictado por voz para Omyvoid."
 
 # Screensaver & Suspend Toggles
 export I18N_TOG_SCREENSAVER_ON="Salvapantallas activado"
@@ -540,7 +533,7 @@ export I18N_KB_EMOJI_PICKER="Selector de emojis"
 export I18N_KB_CAPTURE_MENU="Menú de captura"
 export I18N_KB_TOGGLE_MENU="Menú de alternar"
 export I18N_KB_HARDWARE_MENU="Menú de hardware"
-export I18N_KB_OMYBUNTU_MENU="Menú de Omybuntu"
+export I18N_KB_OMYVOID_MENU="Menú de Omyvoid"
 export I18N_KB_SYSTEM_MENU="Menú del sistema"
 export I18N_KB_POWER_MENU="Menú de energía"
 export I18N_KB_SHOW_KEY_BINDINGS="Mostrar atajos de teclado"
@@ -686,6 +679,4 @@ export I18N_HYPRLOCK_PLACEHOLDER="Introducir contraseña"
 export I18N_POWER_PERFORMANCE="Alto Rendimiento"
 export I18N_POWER_BALANCED="Equilibrado"
 export I18N_POWER_POWER_SAVER="Ahorro de Energía"
-
-
 

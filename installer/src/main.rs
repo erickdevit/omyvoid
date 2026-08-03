@@ -1,11 +1,11 @@
-use std::io;
-use std::time::Duration;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use std::io;
+use std::time::Duration;
 
 mod app;
 mod install;
@@ -25,7 +25,9 @@ fn main() {
     let mut app = app::App::new();
 
     loop {
-        terminal.draw(|f| ui::draw(f, &mut app)).expect("Failed to draw");
+        terminal
+            .draw(|f| ui::draw(f, &mut app))
+            .expect("Failed to draw");
         app.check_install_progress();
         app.tick = app.tick.wrapping_add(1);
 

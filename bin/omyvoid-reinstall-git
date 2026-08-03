@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=Reinstall the stable Omyvoid source directory from git
+
+set -e
+
+# Reinstall the Omyvoid configuration directory from the git source.
+
+git clone --depth=1 --branch main "https://github.com/erickdevit/omyvoid.git" ~/.local/share/omyvoid-new >/dev/null
+mv $OMYVOID_PATH ~/.local/share/omyvoid-old
+mv ~/.local/share/omyvoid-new $OMYVOID_PATH

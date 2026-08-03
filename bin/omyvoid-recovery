@@ -1,0 +1,118 @@
+#!/bin/bash
+
+# omyvoid:summary=Recover an installed Omyvoid system from the live ISO
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+(( EUID == 0 )) || exec sudo "$0" "$@"
+
+mount_root=/mnt/omyvoid-recovery
+probe_root=/run/omyvoid-recovery-probe
+opened_mapper=""
+
+cleanup() {
+  umount -R -l "$mount_root" 2>/dev/null || true
+  umount -l "$probe_root" 2>/dev/null || true
+  rmdir "$mount_root" "$probe_root" 2>/dev/null || true
+  [[ -z $opened_mapper ]] || cryptsetup close "$opened_mapper" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+mkdir -p "$mount_root" "$probe_root"
+
+find_installations() {
+  local device
+  while read -r device; do
+    mount -o ro,subvolid=5 "$device" "$probe_root" 2>/dev/null || continue
+    if [[ -f $probe_root/@/etc/os-release ]] \
+      && grep -q '^ID=void$' "$probe_root/@/etc/os-release" \
+      && [[ -d $probe_root/@/opt/omyvoid ]]; then
+      printf '%s\n' "$device"
+    fi
+    umount "$probe_root"
+  done < <(lsblk -rpn -o PATH,FSTYPE | awk '$2 == "btrfs" {print $1}')
+}
+
+mapfile -t installations < <(find_installations)
+if (( ${#installations[@]} == 0 )); then
+  mapfile -t encrypted < <(lsblk -rpn -o PATH,FSTYPE | awk '$2 == "crypto_LUKS" {print $1}')
+  if (( ${#encrypted[@]} == 0 )); then
+    echo "No Omyvoid Btrfs or LUKS installation was found" >&2
+    exit 1
+  fi
+  if (( ${#encrypted[@]} == 1 )); then
+    encrypted_device=${encrypted[0]}
+  elif command -v gum >/dev/null; then
+    encrypted_device=$(printf '%s\n' "${encrypted[@]}" | gum choose --header "Select the encrypted Omyvoid volume")
+  else
+    printf 'Encrypted devices:\n%s\n' "${encrypted[*]}" >&2
+    echo "Install gum or leave only the target disk connected" >&2
+    exit 1
+  fi
+  opened_mapper=omyvoid_recovery
+  cryptsetup open "$encrypted_device" "$opened_mapper"
+  candidate="/dev/mapper/$opened_mapper"
+  mount -o ro,subvolid=5 "$candidate" "$probe_root" 2>/dev/null || {
+    echo "The selected LUKS volume does not contain Btrfs" >&2
+    exit 1
+  }
+  if [[ ! -f $probe_root/@/etc/os-release ]] \
+    || ! grep -q '^ID=void$' "$probe_root/@/etc/os-release" \
+    || [[ ! -d $probe_root/@/opt/omyvoid ]]; then
+    echo "The selected LUKS volume is not an Omyvoid installation" >&2
+    exit 1
+  fi
+  umount "$probe_root"
+  installations=("$candidate")
+fi
+
+if (( ${#installations[@]} == 1 )); then
+  root_device=${installations[0]}
+else
+  root_device=$(printf '%s\n' "${installations[@]}" | gum choose --header "Select the Omyvoid installation")
+fi
+
+mount -o subvol=@,noatime,compress=zstd "$root_device" "$mount_root"
+for virtual in dev proc sys run; do
+  mkdir -p "$mount_root/$virtual"
+done
+
+boot_uuid=$(awk '$2 == "/boot" && $1 ~ /^UUID=/ {sub(/^UUID=/, "", $1); print $1; exit}' "$mount_root/etc/fstab")
+[[ -n $boot_uuid && -e /dev/disk/by-uuid/$boot_uuid ]] || {
+  echo "The Omyvoid FAT32 /boot filesystem could not be located" >&2
+  exit 1
+}
+mount "/dev/disk/by-uuid/$boot_uuid" "$mount_root/boot"
+mount --rbind /dev "$mount_root/dev"
+mount --make-rslave "$mount_root/dev"
+mount -t proc proc "$mount_root/proc"
+mount --rbind /sys "$mount_root/sys"
+mount --make-rslave "$mount_root/sys"
+mount --rbind /run "$mount_root/run"
+mount --make-rslave "$mount_root/run"
+
+run_target() {
+  chroot "$mount_root" /usr/bin/env \
+    PATH=/opt/omyvoid/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    OMYVOID_PATH=/opt/omyvoid OMYVOID_ROOT_DEVICE_OVERRIDE="$root_device" "$@"
+}
+
+while true; do
+  if command -v gum >/dev/null; then
+    action=$(gum choose --header "Omyvoid recovery — $root_device" \
+      "Restore snapshot" "Undo last restoration" "Rebuild UKIs and Limine menu" \
+      "Reinstall Limine" "Open recovery shell" "Exit")
+  else
+    echo "gum is required for the interactive recovery menu" >&2
+    exit 1
+  fi
+  case "$action" in
+    "Restore snapshot") run_target omyvoid snapshot restore ;;
+    "Undo last restoration") run_target omyvoid snapshot undo ;;
+    "Rebuild UKIs and Limine menu") run_target omyvoid boot refresh ;;
+    "Reinstall Limine") run_target omyvoid boot repair ;;
+    "Open recovery shell") chroot "$mount_root" /bin/bash ;;
+    "Exit"|"") break ;;
+  esac
+done

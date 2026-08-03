@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Regenerate Omyvoid UKIs and Limine menu
+# omyvoid:hidden=true
+
+exec omyvoid-boot-refresh "$@"

@@ -1,1 +1,1 @@
-for f in $OMYBUNTU_PATH/default/bash/fns/*; do source "$f"; done
+for f in $OMYVOID_PATH/default/bash/fns/*; do source "$f"; done

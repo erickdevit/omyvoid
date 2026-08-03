@@ -16,5 +16,5 @@ for vendor in "${!VULKAN_DRIVERS[@]}"; do
 done
 
 if (( ${#PACKAGES[@]} > 0 )); then
-  omybuntu-pkg-add "${PACKAGES[@]}"
+  omyvoid-pkg-add "${PACKAGES[@]}"
 fi

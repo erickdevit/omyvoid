@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# omyvoid:summary=Install Helix and configure it to use the current Omyvoid theme
+
+set -euo pipefail
+trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
+
+echo "Installing Helix..."
+omyvoid-pkg-add helix
+
+mkdir -p ~/.config/helix/themes
+
+# Symlink the rendered Omyvoid theme so Helix tracks the active theme
+ln -sf ~/.config/omyvoid/current/theme/helix.toml ~/.config/helix/themes/omyvoid.toml
+
+# Only seed a config.toml if the user does not already have one
+if [[ ! -f ~/.config/helix/config.toml ]]; then
+  cat >~/.config/helix/config.toml <<'EOF'
+theme = "omyvoid"
+EOF
+fi
+
+# Ensure the symlink target exists for users whose current theme predates this template
+if [[ ! -e ~/.config/omyvoid/current/theme/helix.toml ]]; then
+  omyvoid-theme-refresh
+fi
+
+# Arch-based distros ship Helix as 'helix' rather than the upstream 'hx'.
+if ! grep -q '^alias hx="helix"' ~/.bashrc 2>/dev/null; then
+  echo 'alias hx="helix"' >>~/.bashrc
+fi
+
+echo "✅ Success: Helix installed."

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch the default editor selected through $EDITOR, or nvim when unavailable.
+# omyvoid:args=<path>
+
+omyvoid-cmd-present "$EDITOR" || EDITOR=nvim
+
+case "$EDITOR" in
+nvim | vim | nano | micro | hx | helix | fresh)
+  exec omyvoid-launch-tui "$EDITOR" "$@"
+  ;;
+*)
+  exec setsid "$EDITOR" "$@"
+  ;;
+esac

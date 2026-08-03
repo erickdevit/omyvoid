@@ -1,3 +1,3 @@
 # Install all base packages
-mapfile -t packages < <(grep -v '^#' "$OMYBUNTU_INSTALL/omybuntu-base.packages" | grep -v '^$')
-omybuntu-pkg-add "${packages[@]}"
+mapfile -t packages < <(grep -v '^#' "$OMYVOID_INSTALL/omyvoid-base.packages" | grep -v '^$')
+omyvoid-pkg-add "${packages[@]}"

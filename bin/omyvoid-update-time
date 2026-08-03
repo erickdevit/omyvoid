@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# omyvoid:summary=Restart the active Void time synchronization service
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+for service in chronyd ntpd openntpd; do
+  [[ -e /var/service/$service ]] || continue
+  sudo sv restart "$service"
+  exit 0
+done
+echo "No supervised time synchronization service was found" >&2
+exit 1

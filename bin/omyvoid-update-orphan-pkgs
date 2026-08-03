@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# omyvoid:summary=Remove orphaned system packages after updates
+# omyvoid:requires-sudo=true
+
+echo -e "\e[32m\nRemove orphan system packages\e[0m"
+orphans=$(xbps-query -O 2>/dev/null || true)
+if [[ -n $orphans ]]; then
+  # shellcheck disable=SC2086
+  sudo xbps-remove -Ry $orphans
+fi
+echo

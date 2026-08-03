@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch Files in the active terminal's current directory
+
+exec setsid nautilus --new-window "$(omyvoid-cmd-terminal-cwd)"

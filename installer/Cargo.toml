@@ -1,14 +1,14 @@
 [package]
-name = "omybuntu-installer"
-version = "0.1.0"
+name = "omyvoid-installer"
+version = "0.1.0-dev.1"
 edition = "2021"
 
 [[bin]]
-name = "omybuntu-installer"
+name = "omyvoid-installer"
 path = "src/main.rs"
 
 [[bin]]
-name = "omybuntu-tui-monitors"
+name = "omyvoid-tui-monitors"
 path = "src/monitors_main.rs"
 
 [dependencies]

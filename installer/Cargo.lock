@@ -715,8 +715,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "omybuntu-installer"
-version = "0.1.0"
+name = "omyvoid-installer"
+version = "0.1.0-dev.1"
 dependencies = [
  "crossterm",
  "ratatui",

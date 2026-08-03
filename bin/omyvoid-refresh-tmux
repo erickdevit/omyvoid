@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite the user tmux config with the Omyvoid default and reload tmux.
+
+omyvoid-refresh-config tmux/tmux.conf
+omyvoid-restart-tmux

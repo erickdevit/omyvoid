@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Show the current weather notification
+
+omyvoid-notification-send -g $(omyvoid-weather-icon) -u low "$(omyvoid-weather-status)"

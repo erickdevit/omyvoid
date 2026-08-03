@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# omyvoid:summary=Lock the computer and turn off the display
+# omyvoid:group=system
+# omyvoid:name=lock
+# omyvoid:examples=omyvoid system lock
+
+if ! pidof hyprlock >/dev/null; then
+  (
+    hyprlock
+    omyvoid-system-wake
+  ) &
+fi
+
+# Set keyboard layout to default (first layout)
+hyprctl switchxkblayout all 0 > /dev/null 2>&1
+
+# Avoid running screensaver when locked
+pkill -f org.omyvoid.screensaver
+
+if [[ ${OMYVOID_LOCK_ONLY:-false} != "true" ]]; then
+  (
+    sleep 3
+    pidof hyprlock >/dev/null || exit 0
+    omyvoid-brightness-keyboard off
+    omyvoid-brightness-display off
+  ) &
+fi

@@ -1,2 +1,2 @@
-omybuntu-webapp-install "YouTube" https://youtube.com/ YouTube.png
+omyvoid-webapp-install "YouTube" https://youtube.com/ YouTube.png
 

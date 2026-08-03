@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# omyvoid:summary=Install 32-bit Vulkan graphics libraries from Void multilib
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+omyvoid-pkg-add void-repo-multilib void-repo-multilib-nonfree
+packages=(mesa-32bit)
+lspci | grep -qiE '(VGA|Display).*Intel' && packages+=(mesa-vulkan-intel-32bit)
+lspci | grep -qiE '(VGA|Display).*AMD' && packages+=(mesa-vulkan-radeon-32bit)
+lspci | grep -qi NVIDIA && packages+=(nvidia-libs-32bit)
+omyvoid-pkg-add "${packages[@]}"

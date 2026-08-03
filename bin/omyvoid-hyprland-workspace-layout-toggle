@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle the layout on the current active workspace between dwindle and scrolling
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+ACTIVE_WORKSPACE_JSON=$(hyprctl activeworkspace -j)
+ACTIVE_WORKSPACE=$(jq -r '.id' <<<"$ACTIVE_WORKSPACE_JSON")
+CURRENT_LAYOUT=$(jq -r '.tiledLayout // empty' <<<"$ACTIVE_WORKSPACE_JSON")
+STATE_DIR="$HOME/.local/state/omyvoid/workspace-layouts"
+STATE_FILE="$STATE_DIR/$ACTIVE_WORKSPACE"
+
+if [[ -z $CURRENT_LAYOUT && -f $STATE_FILE ]]; then
+  CURRENT_LAYOUT=$(<"$STATE_FILE")
+fi
+
+if [[ -z $CURRENT_LAYOUT ]]; then
+  CURRENT_LAYOUT=$(hyprctl getoption general:layout -j | jq -r '.str // "dwindle"')
+fi
+
+case "$CURRENT_LAYOUT" in
+  dwindle) NEW_LAYOUT=scrolling ;;
+  *) NEW_LAYOUT=dwindle ;;
+esac
+
+if ! hyprctl keyword workspace "$ACTIVE_WORKSPACE, layout:$NEW_LAYOUT" >/dev/null 2>&1 &&
+  ! hyprctl eval "hl.workspace_rule({ workspace = \"$ACTIVE_WORKSPACE\", layout = \"$NEW_LAYOUT\" })" >/dev/null 2>&1; then
+  exit 1
+fi
+
+mkdir -p "$STATE_DIR"
+echo "$NEW_LAYOUT" > "$STATE_FILE"
+omyvoid-notification-send -g 󱂬 "$(printf "$I18N_LAYOUT_SET" "$NEW_LAYOUT")"

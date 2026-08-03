@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# omyvoid:summary=Append unique kernel arguments to the Omyvoid UKI command line
+# omyvoid:group=boot
+# omyvoid:name=cmdline add
+# omyvoid:args=<argument...>
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+(( EUID == 0 )) || exec sudo "$0" "$@"
+(( $# > 0 )) || { echo "Usage: omyvoid boot cmdline add <argument...>" >&2; exit 2; }
+
+source /etc/default/limine
+current=" ${OMYVOID_KERNEL_CMDLINE:-} "
+for argument in "$@"; do
+  [[ $current == *" $argument "* ]] || current+="$argument "
+done
+current=${current# }
+current=${current% }
+escaped=${current//&/\\&}
+sed -i -E "s|^OMYVOID_KERNEL_CMDLINE=.*$|OMYVOID_KERNEL_CMDLINE=\"$escaped\"|" /etc/default/limine
+omyvoid-boot-refresh

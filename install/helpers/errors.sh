@@ -1,4 +1,4 @@
-# Directs user to Omybuntu Discord
+# Directs user to Omyvoid Discord
 QR_CODE='
 █▀▀▀▀▀█  ▀▀█▄██ ▄ █▀▀▀▀▀█
 █ ███ █ ▄▀██▄▄█ █ █ ███ █
@@ -24,11 +24,11 @@ show_cursor() {
 
 # Display truncated log lines from the install log
 show_log_tail() {
-  if [[ -f $OMYBUNTU_INSTALL_LOG_FILE ]]; then
+  if [[ -f $OMYVOID_INSTALL_LOG_FILE ]]; then
     local log_lines=$((TERM_HEIGHT - LOGO_HEIGHT - 35))
     local max_line_width=$((LOGO_WIDTH - 4))
 
-    tail -n $log_lines "$OMYBUNTU_INSTALL_LOG_FILE" | while IFS= read -r line; do
+    tail -n $log_lines "$OMYVOID_INSTALL_LOG_FILE" | while IFS= read -r line; do
       if ((${#line} > max_line_width)); then
         local truncated_line="${line:0:$max_line_width}..."
       else
@@ -86,23 +86,23 @@ catch_errors() {
 
   # Ensure translation variables are loaded
   if [[ -z ${I18N_ERR_WHAT_TO_DO:-} ]]; then
-    source "${OMYBUNTU_PATH:-$HOME/.local/share/omybuntu}/default/i18n/init.sh" || true
+    source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh" || true
   fi
 
   stop_log_output
   restore_outputs
 
   # In ISO/chroot builds, bail out immediately without interactive UI
-  if [[ -n ${OMYBUNTU_ISO_BUILD:-} || -n ${OMYBUNTU_CHROOT_INSTALL:-} ]]; then
+  if [[ -n ${OMYVOID_ISO_BUILD:-} || -n ${OMYVOID_CHROOT_INSTALL:-} ]]; then
     clear_logo
-    echo "Omybuntu installation failed with exit code $exit_code." >&2
+    echo "Omyvoid installation failed with exit code $exit_code." >&2
     exit 1
   fi
 
   clear_logo
   show_cursor
 
-  gum style --foreground 1 --padding "1 0 1 $PADDING_LEFT" "Omybuntu installation stopped!"
+  gum style --foreground 1 --padding "1 0 1 $PADDING_LEFT" "Omyvoid installation stopped!"
   show_log_tail
 
   gum style "This command halted with exit code $exit_code:"
@@ -117,7 +117,7 @@ catch_errors() {
     options=()
 
     # If online install, show retry first
-    if [[ -n ${OMYBUNTU_ONLINE_INSTALL:-} ]]; then
+    if [[ -n ${OMYVOID_ONLINE_INSTALL:-} ]]; then
       options+=("$I18N_ERR_RETRY")
     fi
 
@@ -134,18 +134,18 @@ catch_errors() {
 
     case "$choice" in
     "$I18N_ERR_RETRY")
-      bash "$OMYBUNTU_PATH"/install.sh
+      bash "$OMYVOID_PATH"/install.sh
       break
       ;;
     "$I18N_ERR_VIEW")
       if command -v less &>/dev/null; then
-        less "$OMYBUNTU_INSTALL_LOG_FILE"
+        less "$OMYVOID_INSTALL_LOG_FILE"
       else
-        tail "$OMYBUNTU_INSTALL_LOG_FILE"
+        tail "$OMYVOID_INSTALL_LOG_FILE"
       fi
       ;;
     "$I18N_ERR_UPLOAD")
-      omybuntu-upload-log
+      omyvoid-upload-log
       ;;
     "$I18N_ERR_EXIT" | "")
       exit 1

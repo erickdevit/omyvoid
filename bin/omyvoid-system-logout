@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=Log out after closing application windows
+# omyvoid:examples=omyvoid logout | omyvoid system logout
+# omyvoid:aliases=omyvoid logout
+
+nohup bash -c "sleep 2 && hyprctl dispatch exit" >/dev/null 2>&1 &
+
+# Now close all windows
+omyvoid-hyprland-window-close-all
+sleep 1 # Allow apps like Chrome to shutdown correctly

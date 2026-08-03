@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# omybuntu:summary=Restart system time synchronization
-# omybuntu:requires-sudo=true
-
-echo "Updating time..."
-sudo systemctl restart systemd-timesyncd

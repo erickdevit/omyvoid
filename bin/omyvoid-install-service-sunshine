@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# omyvoid:summary=Install Sunshine and supervise it with user runit
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+omyvoid-pkg-add sunshine
+service="$HOME/.config/service/sunshine"
+mkdir -p "$service"
+printf '#!/bin/sh\nexec sunshine 2>&1\n' > "$service/run"
+chmod 0755 "$service/run"
+sv up "$service"
+
+tcp_ports=(47984 47989 48010)
+udp_ports=(5353 47998 47999 48000 48002 48010)
+networks=(10.0.0.0/8 172.16.0.0/12 192.168.0.0/16)
+if command -v ufw >/dev/null; then
+  for network in "${networks[@]}"; do
+    for port in "${tcp_ports[@]}"; do
+      sudo ufw allow in proto tcp from "$network" to any port "$port" comment omyvoid-sunshine >/dev/null
+    done
+    for port in "${udp_ports[@]}"; do
+      sudo ufw allow in proto udp from "$network" to any port "$port" comment omyvoid-sunshine >/dev/null
+    done
+  done
+  sudo ufw reload
+fi
+
+omyvoid-webapp-install "Sunshine Admin" "https://localhost:47990" \
+  /usr/share/sunshine/web/images/logo-sunshine-45.png \
+  "omyvoid-launch-webapp https://localhost:47990 --ignore-certificate-errors"
+echo "Sunshine is installed and supervised by runit."

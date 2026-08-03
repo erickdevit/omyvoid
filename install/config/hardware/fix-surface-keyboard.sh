@@ -1,7 +1,7 @@
 # Detect Surface devices which require additional modules for the keyboard to work.
 # Module list derived from Chris McLeod's manual install instructions
 # https://chrismcleod.dev/blog/installing-arch-linux-with-secure-boot-on-a-microsoft-surface-laptop-studio/
-if omybuntu-hw-surface; then
+if omyvoid-hw-surface; then
   product_name="$(cat /sys/class/dmi/id/product_name 2>/dev/null)"
   echo "Detected Surface Device"
 
@@ -18,10 +18,8 @@ if omybuntu-hw-surface; then
     echo "Detected pinctrl module: $pinctrl_module"
   fi
 
-  # Add modules to initramfs (Ubuntu uses initramfs-tools, not mkinitcpio)
-  for mod in ${pinctrl_module} surface_aggregator surface_aggregator_registry surface_aggregator_hub surface_hid_core surface_hid surface_kbd intel_lpss_pci 8250_dw; do
-    [[ -n $mod ]] && grep -qxF "$mod" /etc/initramfs-tools/modules 2>/dev/null || echo "$mod" | sudo tee -a /etc/initramfs-tools/modules > /dev/null
-  done
-  sudo update-initramfs -u
+  # Add modules to the dracut image.
+  modules="${pinctrl_module} surface_aggregator surface_aggregator_registry surface_aggregator_hub surface_hid_core surface_hid surface_kbd intel_lpss_pci 8250_dw"
+  printf 'add_drivers+=" %s "\n' "$modules" | sudo tee /etc/dracut.conf.d/57-omyvoid-surface.conf >/dev/null
 
 fi

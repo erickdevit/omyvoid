@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# omyvoid:summary=Run the full Omyvoid update pipeline
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Ensure screensaver/sleep doesn't set in during updates
+hyprctl dispatch 'hl.dsp.window.tag({ tag = "+noidle" })' &>/dev/null || hyprctl dispatch tagwindow +noidle &>/dev/null || true
+
+# Perform all update steps
+omyvoid-update-keyring
+omyvoid-update-available-reset
+omyvoid-update-system-pkgs
+omyvoid-migrate
+omyvoid-update-orphan-pkgs
+sudo omyvoid-boot-refresh
+sudo omyvoid-snapshot sync
+omyvoid-hook post-update
+
+omyvoid-update-analyze-logs
+
+omyvoid-update-restart
+
+# Re-enable screensaver/sleep after updates
+hyprctl dispatch 'hl.dsp.window.tag({ tag = "-noidle" })' &>/dev/null || hyprctl dispatch tagwindow -- -noidle &>/dev/null || true

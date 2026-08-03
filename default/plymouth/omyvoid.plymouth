@@ -1,0 +1,11 @@
+[Plymouth Theme]
+Name=Omyvoid
+Description=Omyvoid splash screen.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/omyvoid
+ScriptFile=/usr/share/plymouth/themes/omyvoid/omyvoid.script
+ConsoleLogBackgroundColor=0x140a05
+MonospaceFont=Cantarell 11
+Font=Cantarell 11

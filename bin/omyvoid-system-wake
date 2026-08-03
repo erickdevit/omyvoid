@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# omyvoid:summary=Wake displays and restore brightness after idle
+# omyvoid:group=system
+# omyvoid:name=wake
+# omyvoid:examples=omyvoid system wake
+
+omyvoid-brightness-display on
+omyvoid-brightness-keyboard restore

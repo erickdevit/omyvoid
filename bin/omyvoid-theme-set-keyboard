@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# omyvoid:summary=Apply the current theme keyboard color to supported keyboards
+# omyvoid:hidden=true
+
+omyvoid-theme-set-keyboard-asus-rog
+omyvoid-theme-set-keyboard-f16

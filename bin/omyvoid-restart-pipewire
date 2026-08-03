@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# omyvoid:summary=Restart the supervised PipeWire audio stack
+
+set -euo pipefail
+for service in pipewire pipewire-pulse wireplumber; do
+  sv restart "$HOME/.config/service/$service"
+done

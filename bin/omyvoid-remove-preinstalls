@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# omyvoid:summary=Remove preinstalled Omyvoid applications (web apps, TUIs, and selected packages).
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if gum confirm "$I18N_REMOVE_PREINSTALLS_WARN"; then
+  echo -e "Removing preinstalled Omyvoid applications...\n"
+
+  omyvoid-webapp-remove-all
+  omyvoid-tui-remove-all
+
+  [[ -f ~/.config/hypr/bindings.lua ]] && cp ~/.config/hypr/bindings.lua ~/.config/hypr/bindings.lua.bak
+  cp "$OMYVOID_PATH/default/hypr/plain-bindings.lua" ~/.config/hypr/bindings.lua
+  hyprctl reload
+
+  # Remove npm stubs and custom binaries
+  rm -f ~/.local/bin/codex ~/.local/bin/gemini ~/.local/bin/copilot \
+       ~/.local/bin/opencode ~/.local/bin/playwright-cli ~/.local/bin/pi \
+       ~/.local/bin/cliamp
+
+  omyvoid-pkg-drop \
+    aether \
+    cliamp \
+    typora \
+    spotify \
+    libreoffice-fresh \
+    bitwarden \
+    bitwarden-cli \
+    xournalpp \
+    signal-desktop \
+    pinta \
+    obsidian \
+    obs-studio \
+    kdenlive \
+    lazydocker \
+    opencode \
+    claude-code
+fi

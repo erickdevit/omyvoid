@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# omyvoid:summary=Print the active Omyvoid package channel
+
+OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+STATE_FILE="$HOME/.local/state/omyvoid/channel"
+if [[ -f $STATE_FILE ]]; then
+  channel=$(cat "$STATE_FILE")
+elif [[ -f $OMYVOID_PATH/.build-info ]]; then
+  channel=$(awk -F= '$1 == "OMYVOID_BUILD_CHANNEL" { print $2 }' "$OMYVOID_PATH/.build-info")
+else
+  # Fallback to current Git branch
+  current_branch=$(git -C "$OMYVOID_PATH" branch --show-current 2>/dev/null || true)
+  if [[ $current_branch == "main" ]]; then
+    channel="stable"
+  elif [[ $current_branch == "rc" ]]; then
+    channel="rc"
+  elif [[ $current_branch == "dev" ]]; then
+    channel="dev"
+  else
+    channel="unknown"
+  fi
+fi
+
+echo "$channel"

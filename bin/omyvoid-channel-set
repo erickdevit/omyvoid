@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# omyvoid:summary=Set the Omyvoid channel, which dictates what git branch and package repository is used.
+# omyvoid:args=<stable|rc|edge|dev>
+
+if (($# == 0)); then
+  echo "Usage: omyvoid-channel-set [stable|rc|edge|dev]"
+  exit 1
+else
+  channel="$1"
+fi
+
+if [[ $channel != "stable" && $channel != "rc" && $channel != "edge" && $channel != "dev" ]]; then
+  echo "Error: Invalid channel '$channel'. Must be one of: stable, rc, edge, dev"
+  exit 1
+fi
+
+case "$channel" in
+"stable") omyvoid-branch-set "main" ;;
+"rc") omyvoid-branch-set "rc" ;;
+"edge") omyvoid-branch-set "main" ;;
+"dev") omyvoid-branch-set "dev" ;;
+esac
+
+# Persist the channel name to user's state
+STATE_DIR="$HOME/.local/state/omyvoid"
+mkdir -p "$STATE_DIR"
+echo "$channel" > "$STATE_DIR/channel"
+
+# Refresh XBPS config and databases for the selected channel
+if omyvoid-cmd-present omyvoid-refresh-xbps; then
+  omyvoid-refresh-xbps "$channel"
+fi
+
+omyvoid-update -y

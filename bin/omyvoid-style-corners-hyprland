@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# omyvoid:summary=Set or toggle shape of Hyprland window corners
+# omyvoid:args=[toggle|sharp|round]
+# omyvoid:examples=omyvoid style corners hyprland toggle | omyvoid style corners hyprland round | omyvoid style corners hyprland sharp
+
+case "${1:-toggle}" in
+  round) set -- on ;;
+  sharp) set -- off ;;
+  toggle) ;;
+  *)
+    echo "Usage: omyvoid-style-corners-hyprland [toggle|sharp|round]"
+    exit 1
+    ;;
+esac
+
+omyvoid-hyprland-toggle rounded-corners "$1"

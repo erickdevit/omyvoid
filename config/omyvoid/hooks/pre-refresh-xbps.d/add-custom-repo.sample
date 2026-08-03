@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Runs before `omyvoid refresh xbps`. Remove .sample to enable it.
+# Keep one repository= line in an independent file under /etc/xbps.d.
+
+set -euo pipefail
+
+repository=${OMYVOID_CUSTOM_XBPS_REPOSITORY:-}
+[[ -n $repository ]] || exit 0
+printf 'repository=%s\n' "$repository" | sudo tee /etc/xbps.d/20-custom.conf >/dev/null

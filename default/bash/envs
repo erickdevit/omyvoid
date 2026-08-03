@@ -6,6 +6,8 @@ export BAT_THEME=ansi
 export MANROFFOPT="-c"
 export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 
-# Duplicated from .config/uwsm/env so SSH works too
-export OMYBUNTU_PATH=$HOME/.local/share/omybuntu
-export PATH=$OMYBUNTU_PATH/bin:$PATH:$HOME/.local/bin
+# Available in graphical sessions and SSH sessions.
+export OMYVOID_PATH=$HOME/.local/share/omyvoid
+export PATH=$OMYVOID_PATH/bin:$PATH:$HOME/.local/bin
+
+[[ -f ~/.config/omyvoid/environment ]] && source ~/.config/omyvoid/environment

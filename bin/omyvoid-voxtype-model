@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# omyvoid:summary=Open Voxtype AI model setup
+
+set -e
+
+omyvoid-launch-floating-terminal-with-presentation "voxtype setup model"
+omyvoid-restart-waybar

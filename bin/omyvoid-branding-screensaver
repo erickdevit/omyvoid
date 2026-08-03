@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# omyvoid:summary=Edit, set, or reset screensaver branding
+# omyvoid:group=branding
+# omyvoid:name=screensaver
+# omyvoid:args=<image|text|reset>
+# omyvoid:examples=omyvoid branding screensaver image | omyvoid branding screensaver text | omyvoid branding screensaver reset
+
+set -euo pipefail
+
+SOURCE_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+case "${1:-}" in
+image)
+  picker_msg=$(printf "$I18N_BRANDING_PICK_IMAGE" "$SOURCE_DIR")
+  image=$(omyvoid-menu-file "$picker_msg" "${SOURCE_DIR}" "svg png")
+  if [[ -n $image ]] && omyvoid-transcode-ascii "$image" ~/.config/omyvoid/branding/screensaver.txt; then
+    omyvoid-launch-screensaver force >/dev/null 2>&1
+  fi
+  ;;
+text)
+  omyvoid-launch-editor ~/.config/omyvoid/branding/screensaver.txt >/dev/null 2>&1 && omyvoid-launch-screensaver force >/dev/null 2>&1
+  ;;
+reset)
+  cp "$OMYVOID_PATH/logo.txt" ~/.config/omyvoid/branding/screensaver.txt && omyvoid-launch-screensaver force >/dev/null 2>&1
+  ;;
+*)
+  echo "Usage: omyvoid-branding-screensaver <image|text|reset>" >&2
+  exit 1
+  ;;
+esac

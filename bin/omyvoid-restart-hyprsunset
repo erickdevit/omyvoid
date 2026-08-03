@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Restart the hyprsunset service (used for blue light filtering/night light).
+
+omyvoid-restart-app hyprsunset

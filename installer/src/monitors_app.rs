@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-use std::process::Command;
-use serde::Deserialize;
 use crossterm::event::{KeyCode, KeyEvent};
+use serde::Deserialize;
+use std::process::Command;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -218,13 +218,13 @@ pub struct App {
     pub should_quit: bool,
     pub current_menu: MenuState,
     pub selected_sub_idx: usize,
-    
+
     // Submenu options lists
     pub resolutions: Vec<String>,
     pub scales: Vec<String>,
     pub positions: Vec<String>,
     pub rotations: Vec<String>,
-    
+
     // Configs
     pub translations: Translations,
     pub lang: String,
@@ -234,7 +234,7 @@ impl App {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let lang = Self::get_language();
         let translations = Translations::get(&lang);
-        
+
         let mut app = Self {
             monitors: Vec::new(),
             selected_idx: 0,
@@ -248,30 +248,33 @@ impl App {
             translations,
             lang,
         };
-        
+
         app.refresh_monitors()?;
         Ok(app)
     }
-    
+
     fn get_language() -> String {
-        if let Ok(val) = std::env::var("OMYBUNTU_LANGUAGE") {
+        if let Ok(val) = std::env::var("OMYVOID_LANGUAGE") {
             if !val.is_empty() {
                 return val;
             }
         }
-        let config_path = format!("{}/.config/omybuntu/language", std::env::var("HOME").unwrap_or_default());
+        let config_path = format!(
+            "{}/.config/omyvoid/language",
+            std::env::var("HOME").unwrap_or_default()
+        );
         std::fs::read_to_string(config_path)
             .map(|s| s.trim().to_string())
             .unwrap_or_else(|_| "en".to_string())
     }
-    
+
     pub fn refresh_monitors(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let output = Command::new("hyprctl")
             .args(["monitors", "all", "-j"])
             .output()?;
-            
+
         let mut monitors: Vec<Monitor> = serde_json::from_slice(&output.stdout)?;
-        
+
         // Sort internal first, then by ID
         monitors.sort_by(|a, b| {
             let a_edp = a.name.contains("eDP");
@@ -284,31 +287,29 @@ impl App {
                 a.id.cmp(&b.id)
             }
         });
-        
+
         self.monitors = monitors;
         if self.selected_idx >= self.monitors.len() {
             self.selected_idx = 0;
         }
         Ok(())
     }
-    
+
     pub fn total_main_options(&self) -> usize {
         self.monitors.len()
     }
-    
+
     fn run_helper(&self, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-        let helper_cmd = if let Ok(val) = std::env::var("OMYBUNTU_PATH") {
-            format!("{}/bin/omybuntu-hyprland-monitor-helper", val)
+        let helper_cmd = if let Ok(val) = std::env::var("OMYVOID_PATH") {
+            format!("{}/bin/omyvoid-hyprland-monitor-helper", val)
         } else {
-            "omybuntu-hyprland-monitor-helper".to_string()
+            "omyvoid-hyprland-monitor-helper".to_string()
         };
-        
-        Command::new(helper_cmd)
-            .args(args)
-            .output()?;
+
+        Command::new(helper_cmd).args(args).output()?;
         Ok(())
     }
-    
+
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
         match self.current_menu {
             MenuState::Main => self.handle_key_main(key),
@@ -319,22 +320,30 @@ impl App {
             MenuState::ChangeRotation => self.handle_key_submenu(key, &self.rotations.clone()),
         }
     }
-    
+
     fn handle_key_main(&mut self, key: KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
         let total = self.monitors.len();
         if total == 0 {
             return Ok(false);
         }
-        
+
         match key.code {
-            KeyCode::Up | KeyCode::Left | KeyCode::Char('k') | KeyCode::Char('h') | KeyCode::BackTab => {
+            KeyCode::Up
+            | KeyCode::Left
+            | KeyCode::Char('k')
+            | KeyCode::Char('h')
+            | KeyCode::BackTab => {
                 if self.selected_idx > 0 {
                     self.selected_idx -= 1;
                 } else {
                     self.selected_idx = total - 1;
                 }
             }
-            KeyCode::Down | KeyCode::Right | KeyCode::Char('j') | KeyCode::Char('l') | KeyCode::Tab => {
+            KeyCode::Down
+            | KeyCode::Right
+            | KeyCode::Char('j')
+            | KeyCode::Char('l')
+            | KeyCode::Tab => {
                 if self.selected_idx < total - 1 {
                     self.selected_idx += 1;
                 } else {
@@ -369,10 +378,13 @@ impl App {
         }
         Ok(false)
     }
-    
-    fn handle_key_monitor_selected(&mut self, key: KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
+
+    fn handle_key_monitor_selected(
+        &mut self,
+        key: KeyEvent,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         let monitor = &self.monitors[self.selected_idx].clone();
-        
+
         let mut opts = Vec::new();
         if monitor.disabled {
             opts.push(self.translations.enable);
@@ -384,9 +396,9 @@ impl App {
             opts.push(self.translations.disable);
         }
         opts.push(self.translations.back);
-        
+
         let total = opts.len();
-        
+
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 if self.selected_sub_idx > 0 {
@@ -410,7 +422,8 @@ impl App {
                 if choice == self.translations.back {
                     self.current_menu = MenuState::Main;
                 } else if choice == self.translations.enable {
-                    let _ = self.run_helper(&["set", &monitor.name, "preferred", "auto", "1.0", "0"]);
+                    let _ =
+                        self.run_helper(&["set", &monitor.name, "preferred", "auto", "1.0", "0"]);
                     self.refresh_monitors()?;
                     self.current_menu = MenuState::Main;
                 } else if choice == self.translations.disable {
@@ -461,8 +474,12 @@ impl App {
         }
         Ok(false)
     }
-    
-    fn handle_key_submenu(&mut self, key: KeyEvent, opts: &[String]) -> Result<bool, Box<dyn std::error::Error>> {
+
+    fn handle_key_submenu(
+        &mut self,
+        key: KeyEvent,
+        opts: &[String],
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         let total = opts.len();
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
@@ -486,14 +503,19 @@ impl App {
             KeyCode::Enter => {
                 let val = &opts[self.selected_sub_idx];
                 let monitor = &self.monitors[self.selected_idx];
-                
+
                 let cur_mode = if monitor.width == 0 {
                     "preferred".to_string()
                 } else {
-                    format!("{}x{}@{}", monitor.width, monitor.height, monitor.refresh_rate.round())
+                    format!(
+                        "{}x{}@{}",
+                        monitor.width,
+                        monitor.height,
+                        monitor.refresh_rate.round()
+                    )
                 };
                 let cur_pos = format!("{}x{}", monitor.x, monitor.y);
-                
+
                 match self.current_menu {
                     MenuState::ChangeResolution => {
                         let _ = self.run_helper(&[
@@ -537,7 +559,7 @@ impl App {
                     }
                     _ => {}
                 }
-                
+
                 self.refresh_monitors()?;
                 self.current_menu = MenuState::Main;
                 self.selected_sub_idx = 0;

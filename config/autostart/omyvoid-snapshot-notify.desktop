@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Omyvoid Snapshot Recovery
+Exec=omyvoid snapshot notify
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

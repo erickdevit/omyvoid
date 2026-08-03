@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# omyvoid:summary=Install Ollama
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+trap 'echo -e "\n❌ Error: Installation failed at line $LINENO." >&2' ERR
+
+echo "Installing Ollama from the Omyvoid XBPS repository..."
+omyvoid-pkg-add ollama
+
+echo "✅ Success: Ollama installed successfully!"

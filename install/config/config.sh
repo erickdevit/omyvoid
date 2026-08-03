@@ -1,7 +1,7 @@
-# Copy over Omybuntu configs
+# Copy over Omyvoid configs
 mkdir -p ~/.config
-cp -R "$OMYBUNTU_PATH"/config/* ~/.config/
-mkdir -p ~/.config/omybuntu/branding
+cp -R "$OMYVOID_PATH"/config/* ~/.config/
+mkdir -p ~/.config/omyvoid/branding
 
-# Use default bashrc from Omybuntu
-cp "$OMYBUNTU_PATH"/default/bashrc ~/.bashrc
+# Use default bashrc from Omyvoid
+cp "$OMYVOID_PATH"/default/bashrc ~/.bashrc

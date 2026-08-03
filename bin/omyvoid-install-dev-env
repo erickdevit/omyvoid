@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# omyvoid:summary=Install a supported development environment through XBPS
+# omyvoid:name=dev-env
+# omyvoid:args=<ruby|node|go|laravel|symfony|php|python|elixir|phoenix|rust|java|zig|ocaml|clojure>
+# omyvoid:examples=omyvoid install dev-env rust | omyvoid install dev-env node
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+environment=${1:-}
+[[ -n $environment ]] || {
+  echo 'Usage: omyvoid install dev-env <ruby|node|go|laravel|symfony|php|python|elixir|phoenix|rust|java|zig|ocaml|clojure>' >&2
+  exit 2
+}
+
+case "$environment" in
+  ruby) packages=(ruby ruby-devel) ;;
+  node) packages=(nodejs) ;;
+  go) packages=(go gopls) ;;
+  php|laravel|symfony) packages=(php8.5 php8.5-intl php8.5-mysql php8.5-sqlite composer8.5 nodejs) ;;
+  python) packages=(python3 python3-devel uv) ;;
+  elixir|phoenix) packages=(erlang elixir erlang_ls) ;;
+  rust) packages=(rust rust-analyzer) ;;
+  java) packages=(openjdk21) ;;
+  zig) packages=(zig zls) ;;
+  ocaml) packages=(opam) ;;
+  clojure) packages=(clojure clojure-lsp rlwrap) ;;
+  *)
+    echo "No approved XBPS package set is available for: $environment" >&2
+    echo 'Add an Omyvoid xbps-src template instead of using a standalone installer.' >&2
+    exit 1
+    ;;
+esac
+
+omyvoid-pkg-add "${packages[@]}"
+echo "Installed the $environment development environment through XBPS."

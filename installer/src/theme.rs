@@ -6,33 +6,33 @@ use ratatui::style::{Color, Modifier, Style};
 
 #[derive(Clone, Copy)]
 struct Palette {
-    bg:           Color,
-    surface:      Color,
-    border:       Color,
-    accent:       Color,
+    bg: Color,
+    surface: Color,
+    border: Color,
+    accent: Color,
     accent_light: Color,
-    text:         Color,
-    muted:        Color,
-    success:      Color,
-    error:        Color,
-    warning:      Color,
-    selected_fg:  Color,
+    text: Color,
+    muted: Color,
+    success: Color,
+    error: Color,
+    warning: Color,
+    selected_fg: Color,
 }
 
 static PALETTE: OnceLock<Palette> = OnceLock::new();
 
 const FALLBACK: Palette = Palette {
-    bg:           Color::Rgb(13, 15, 20),
-    surface:      Color::Rgb(24, 26, 34),
-    border:       Color::Rgb(55, 65, 81),
-    accent:       Color::Rgb(245, 158, 11),
+    bg: Color::Rgb(13, 15, 20),
+    surface: Color::Rgb(24, 26, 34),
+    border: Color::Rgb(55, 65, 81),
+    accent: Color::Rgb(245, 158, 11),
     accent_light: Color::Rgb(251, 146, 60),
-    text:         Color::Rgb(226, 232, 240),
-    muted:        Color::Rgb(100, 116, 139),
-    success:      Color::Rgb(16, 185, 129),
-    error:        Color::Rgb(239, 68, 68),
-    warning:      Color::Rgb(245, 158, 11),
-    selected_fg:  Color::Rgb(20, 10, 5),
+    text: Color::Rgb(226, 232, 240),
+    muted: Color::Rgb(100, 116, 139),
+    success: Color::Rgb(16, 185, 129),
+    error: Color::Rgb(239, 68, 68),
+    warning: Color::Rgb(245, 158, 11),
+    selected_fg: Color::Rgb(20, 10, 5),
 };
 
 fn palette() -> &'static Palette {
@@ -43,21 +43,22 @@ fn load_palette() -> Palette {
     for path in theme_paths() {
         if let Ok(content) = fs::read_to_string(path) {
             return Palette {
-                bg:           color(&content, "background").unwrap_or(FALLBACK.bg),
-                surface:      color(&content, "color0").unwrap_or(FALLBACK.surface),
-                border:       color(&content, "active_border_color")
+                bg: color(&content, "background").unwrap_or(FALLBACK.bg),
+                surface: color(&content, "color0").unwrap_or(FALLBACK.surface),
+                border: color(&content, "active_border_color")
                     .or_else(|| color(&content, "color8"))
                     .unwrap_or(FALLBACK.border),
-                accent:       color(&content, "accent").unwrap_or(FALLBACK.accent),
+                accent: color(&content, "accent").unwrap_or(FALLBACK.accent),
                 accent_light: color(&content, "cursor")
                     .or_else(|| color(&content, "color12"))
                     .unwrap_or(FALLBACK.accent_light),
-                text:         color(&content, "foreground").unwrap_or(FALLBACK.text),
-                muted:        color(&content, "color8").unwrap_or(FALLBACK.muted),
-                success:      color(&content, "color2").unwrap_or(FALLBACK.success),
-                error:        color(&content, "color1").unwrap_or(FALLBACK.error),
-                warning:      color(&content, "color3").unwrap_or(FALLBACK.warning),
-                selected_fg:  color(&content, "selection_foreground").unwrap_or(FALLBACK.selected_fg),
+                text: color(&content, "foreground").unwrap_or(FALLBACK.text),
+                muted: color(&content, "color8").unwrap_or(FALLBACK.muted),
+                success: color(&content, "color2").unwrap_or(FALLBACK.success),
+                error: color(&content, "color1").unwrap_or(FALLBACK.error),
+                warning: color(&content, "color3").unwrap_or(FALLBACK.warning),
+                selected_fg: color(&content, "selection_foreground")
+                    .unwrap_or(FALLBACK.selected_fg),
             };
         }
     }
@@ -69,14 +70,18 @@ fn theme_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
     if let Ok(home) = env::var("HOME") {
-        paths.push(PathBuf::from(format!("{home}/.config/omybuntu/current/theme/colors.toml")));
+        paths.push(PathBuf::from(format!(
+            "{home}/.config/omyvoid/current/theme/colors.toml"
+        )));
     }
 
-    if let Ok(omybuntu_path) = env::var("OMYBUNTU_PATH") {
-        paths.push(PathBuf::from(format!("{omybuntu_path}/themes/omybuntu/colors.toml")));
+    if let Ok(omyvoid_path) = env::var("OMYVOID_PATH") {
+        paths.push(PathBuf::from(format!(
+            "{omyvoid_path}/themes/omyvoid/colors.toml"
+        )));
     }
 
-    paths.push(PathBuf::from("/opt/omybuntu/themes/omybuntu/colors.toml"));
+    paths.push(PathBuf::from("/opt/omyvoid/themes/omyvoid/colors.toml"));
     paths
 }
 
@@ -144,7 +149,9 @@ pub fn base() -> Style {
 }
 
 pub fn accent() -> Style {
-    Style::default().fg(palette().accent).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(palette().accent)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn muted() -> Style {
@@ -153,15 +160,21 @@ pub fn muted() -> Style {
 
 #[allow(dead_code)]
 pub fn success() -> Style {
-    Style::default().fg(palette().success).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(palette().success)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn error_style() -> Style {
-    Style::default().fg(palette().error).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(palette().error)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn warning_style() -> Style {
-    Style::default().fg(palette().warning).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(palette().warning)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn selected() -> Style {

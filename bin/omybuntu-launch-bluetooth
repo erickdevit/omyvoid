@@ -1,6 +1,0 @@
-#!/bin/bash
-
-# omybuntu:summary=Launch the Omybuntu bluetooth controls TUI (provided by bluetui).
-
-rfkill unblock bluetooth
-exec omybuntu-launch-or-focus-tui bluetui

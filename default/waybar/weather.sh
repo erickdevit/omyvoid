@@ -1,6 +1,6 @@
 #!/bin/bash
 
-icon=$(omybuntu-weather-icon 2>/dev/null)
+icon=$(omyvoid-weather-icon 2>/dev/null)
 
 if [[ -n $icon ]]; then
   icon=$(printf '%s' "$icon" | sed 's/["\\]/\\&/g')

@@ -2,7 +2,7 @@
 iso2sd() {
   if (( $# < 1 )); then
     echo "Usage: iso2sd <input_file> [output_device]"
-    echo "Example: iso2sd ~/Downloads/ubuntu-25.04-desktop-amd64.iso /dev/sda"
+    echo "Example: iso2sd ~/Downloads/omyvoid.iso /dev/sda"
     return 1
   fi
 
@@ -17,7 +17,7 @@ iso2sd() {
       return 1
     fi
 
-    drive=$(omybuntu-drive-select "$available_sds")
+    drive=$(omyvoid-drive-select "$available_sds")
 
     if [[ -z $drive ]]; then
       echo "No drive selected"

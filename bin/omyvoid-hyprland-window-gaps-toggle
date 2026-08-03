@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggles the window gaps globally between no gaps and the default.
+
+omyvoid-hyprland-toggle window-no-gaps

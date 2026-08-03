@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# omyvoid:summary=Remove kernel arguments from the Omyvoid UKI command line
+# omyvoid:group=boot
+# omyvoid:name=cmdline remove
+# omyvoid:args=<argument...>
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+(( EUID == 0 )) || exec sudo "$0" "$@"
+source /etc/default/limine
+read -r -a current <<< "${OMYVOID_KERNEL_CMDLINE:-}"
+filtered=()
+for existing in "${current[@]}"; do
+  remove=false
+  for argument in "$@"; do [[ $existing == "$argument" ]] && remove=true; done
+  $remove || filtered+=("$existing")
+done
+value=${filtered[*]}
+escaped=${value//&/\\&}
+sed -i -E "s|^OMYVOID_KERNEL_CMDLINE=.*$|OMYVOID_KERNEL_CMDLINE=\"$escaped\"|" /etc/default/limine
+omyvoid-boot-refresh

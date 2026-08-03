@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle integrated and hybrid GPU modes through supergfxctl
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+if omyvoid-cmd-missing supergfxctl; then
+  omyvoid-pkg-add supergfxctl
+fi
+if [[ -d /etc/sv/supergfxd ]]; then
+  sudo ln -snf /etc/sv/supergfxd /var/service/supergfxd
+  sudo sv up supergfxd
+fi
+
+case $(supergfxctl -g) in
+  Integrated) target=Hybrid ;;
+  Hybrid) target=Integrated ;;
+  *) echo "No supported hybrid GPU mode was detected" >&2; exit 1 ;;
+esac
+gum confirm "Switch the GPU mode to $target and reboot?" || exit 130
+sudo supergfxctl -m "$target"
+omyvoid-system-reboot

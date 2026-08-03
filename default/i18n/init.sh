@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Detect language configuration
-LANG_FILE="$HOME/.config/omybuntu/language"
-LANG_VAL="${OMYBUNTU_LANGUAGE:-}"
+LANG_FILE="$HOME/.config/omyvoid/language"
+LANG_VAL="${OMYVOID_LANGUAGE:-}"
 
 if [[ -z $LANG_VAL ]]; then
   if [[ -f "$LANG_FILE" ]]; then

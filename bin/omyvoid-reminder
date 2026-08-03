@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# omyvoid:summary=Set and show lightweight desktop notification reminders
+# omyvoid:args=<minutes> [message] | show | clear
+# omyvoid:examples=omyvoid reminder 5 | omyvoid reminder 30 "Check the oven" | omyvoid reminder show | omyvoid reminder clear
+
+set -euo pipefail
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+reminder_dir=${XDG_RUNTIME_DIR:-/tmp}/omyvoid-reminders
+mkdir -p "$reminder_dir"
+
+show_reminders() {
+  local file deadline message remaining body="" now
+  now=$(date +%s)
+  for file in "$reminder_dir"/*.meta; do
+    [[ -f $file ]] || continue
+    IFS=$'\t' read -r deadline message pid < "$file"
+    (( deadline > now )) || continue
+    remaining=$((deadline - now))
+    body+="$message in $((remaining / 60))m $((remaining % 60))s"$'\n'
+  done
+  if [[ -n $body ]]; then
+    omyvoid-notification-send -g 󰔛 "$I18N_REM_UPCOMING" "${body%$'\n'}"
+  else
+    omyvoid-notification-send -g 󰔛 "$I18N_REM_UPCOMING" "$I18N_REM_NONE"
+  fi
+}
+
+clear_reminders() {
+  local file deadline message pid
+  for file in "$reminder_dir"/*.meta; do
+    [[ -f $file ]] || continue
+    IFS=$'\t' read -r deadline message pid < "$file"
+    kill "$pid" 2>/dev/null || true
+    rm -f "$file"
+  done
+  omyvoid-notification-send -g 󰔛 "$I18N_REM_CLEARED_ALL"
+}
+
+case ${1:-} in
+  show|list) show_reminders; exit 0 ;;
+  clear) clear_reminders; exit 0 ;;
+esac
+
+minutes=${1:-}
+shift || true
+[[ $minutes =~ ^[1-9][0-9]*$ ]] || { echo "Usage: omyvoid reminder <minutes> [message]" >&2; exit 2; }
+message=${*:-$(printf "$I18N_REM_TIME_UP" "$minutes")}
+deadline=$(($(date +%s) + minutes * 60))
+id="$(date +%s)-$$"
+meta="$reminder_dir/$id.meta"
+
+setsid bash -c 'sleep "$1"; omyvoid-notification-send -g 󰔛 "$2" "$3" -u critical; rm -f "$4"' \
+  bash "$((minutes * 60))" "$I18N_REM_TITLE" "$message" "$meta" >/dev/null 2>&1 &
+pid=$!
+printf '%s\t%s\t%s\n' "$deadline" "$message" "$pid" > "$meta"
+omyvoid-notification-send -g 󰔛 "$message (${minutes}m)" "$(printf "$I18N_REM_CONFIRM" "$(date -d "@$deadline" +%H:%M)")"

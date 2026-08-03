@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Check if a Hyprland toggle is currently enabled.
+# omyvoid:args=<flag-name>
+
+[[ -f "$HOME/.local/state/omyvoid/toggles/hypr/$1.conf" ]]

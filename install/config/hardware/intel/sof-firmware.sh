@@ -3,6 +3,6 @@
 # Mainline `linux` only optdeps it, so without this the DSP fails to boot
 # and only auto_null shows up in PipeWire.
 
-if omybuntu-hw-intel-ptl && ! omybuntu-hw-match "XPS"; then
-  omybuntu-pkg-add sof-firmware
+if omyvoid-hw-intel-ptl && ! omyvoid-hw-match "XPS"; then
+  omyvoid-pkg-add sof-firmware
 fi

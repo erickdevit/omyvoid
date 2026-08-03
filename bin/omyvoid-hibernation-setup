@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# omyvoid:summary=Configure optional hibernation with a Btrfs swapfile and Limine UKI arguments
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+[[ -f /sys/power/image_size ]] || { echo "Hibernation is not supported by this kernel" >&2; exit 1; }
+[[ $(findmnt -n -o FSTYPE /) == btrfs ]] || { echo "A Btrfs root is required" >&2; exit 1; }
+omyvoid-hibernation-available && { echo "Hibernation is already configured"; exit 0; }
+
+memory_kib=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+gum confirm "Create a $((memory_kib / 1024)) MiB Btrfs swapfile for hibernation?" || exit 130
+
+if ! sudo btrfs subvolume show /swap >/dev/null 2>&1; then
+  sudo btrfs subvolume create /swap
+fi
+sudo chattr +C /swap
+if [[ ! -f /swap/swapfile ]]; then
+  sudo btrfs filesystem mkswapfile -s "${memory_kib}K" /swap/swapfile
+fi
+grep -Fq '/swap/swapfile' /etc/fstab || printf '/swap/swapfile none swap defaults,pri=0 0 0\n' | sudo tee -a /etc/fstab >/dev/null
+sudo swapon -p 0 /swap/swapfile
+
+resume_uuid=$(findmnt -no UUID -T /swap/swapfile)
+resume_offset=$(sudo btrfs inspect-internal map-swapfile -r /swap/swapfile)
+sudo tee /etc/dracut.conf.d/70-omyvoid-resume.conf >/dev/null <<'EOF'
+add_dracutmodules+=" resume "
+EOF
+arguments=("resume=UUID=$resume_uuid" "resume_offset=$resume_offset")
+grep -q '\[s2idle\]' /sys/power/mem_sleep 2>/dev/null && arguments+=(rtc_cmos.use_acpi_alarm=1)
+sudo omyvoid-boot-cmdline-add "${arguments[@]}"
+echo "Hibernation is configured. Reboot before using it."

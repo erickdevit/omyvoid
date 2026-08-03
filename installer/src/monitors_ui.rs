@@ -1,3 +1,4 @@
+use crate::monitors_app::{App, MenuState, Monitor};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -5,7 +6,6 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
-use crate::monitors_app::{App, MenuState, Monitor};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let size = f.area();
@@ -27,12 +27,11 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let title_para = Paragraph::new(Line::from(vec![
         Span::styled(
             format!(" {} ", app.translations.title),
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(
-            " - omybuntu",
-            Style::default().fg(Color::DarkGray),
-        ),
+        Span::styled(" - omyvoid", Style::default().fg(Color::DarkGray)),
     ]))
     .block(header_block);
     f.render_widget(title_para, chunks[0]);
@@ -42,7 +41,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .title(" [ Connected Screens Layout ] ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray));
-    
+
     let preview_area = chunks[1];
     f.render_widget(preview_block, preview_area);
 
@@ -57,7 +56,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     // Split preview space into columns dynamically, centering the boxes
     if !app.monitors.is_empty() {
         let cols_count = app.monitors.len();
-        
+
         // Calculate box dimensions for each monitor based on aspect ratio
         let mut box_dims = Vec::new();
         for m in &app.monitors {
@@ -74,7 +73,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
         let gap = 4;
         let total_w = box_dims.iter().map(|d| d.0).sum::<u16>() + (cols_count - 1) as u16 * gap;
-        
+
         let padding = if inner_preview.width > total_w {
             (inner_preview.width - total_w) / 2
         } else {
@@ -111,7 +110,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             if i < monitor_rects.len() {
                 let col_rect = monitor_rects[i];
                 let (box_w, box_h) = box_dims[i];
-                
+
                 // Center the box area inside the column rect
                 let mut box_area = col_rect;
                 if col_rect.height > box_h {
@@ -122,7 +121,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
                     box_area.x += (col_rect.width - box_w) / 2;
                     box_area.width = box_w;
                 }
-                
+
                 draw_monitor_box(f, box_area, monitor, i, app);
             }
         }
@@ -133,14 +132,14 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .title(" [ Keyboard Shortcuts & Navigation ] ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray));
-        
+
     let help_para = Paragraph::new(Line::from(Span::styled(
         app.translations.help_text,
         Style::default().fg(Color::Yellow),
     )))
     .block(help_block)
     .alignment(ratatui::layout::Alignment::Center);
-    
+
     f.render_widget(help_para, chunks[2]);
 
     // 4. Overlays / Popups
@@ -158,19 +157,49 @@ pub fn draw(f: &mut Frame, app: &mut App) {
                 opts.push(app.translations.disable.to_string());
             }
             opts.push(app.translations.back.to_string());
-            render_popup(f, size, &format!("Configure {}", monitor.name), &opts, app.selected_sub_idx);
+            render_popup(
+                f,
+                size,
+                &format!("Configure {}", monitor.name),
+                &opts,
+                app.selected_sub_idx,
+            );
         }
         MenuState::ChangeResolution => {
-            render_popup(f, size, app.translations.select_res, &app.resolutions, app.selected_sub_idx);
+            render_popup(
+                f,
+                size,
+                app.translations.select_res,
+                &app.resolutions,
+                app.selected_sub_idx,
+            );
         }
         MenuState::ChangeScale => {
-            render_popup(f, size, app.translations.select_scale, &app.scales, app.selected_sub_idx);
+            render_popup(
+                f,
+                size,
+                app.translations.select_scale,
+                &app.scales,
+                app.selected_sub_idx,
+            );
         }
         MenuState::ChangePosition => {
-            render_popup(f, size, app.translations.select_pos, &app.positions, app.selected_sub_idx);
+            render_popup(
+                f,
+                size,
+                app.translations.select_pos,
+                &app.positions,
+                app.selected_sub_idx,
+            );
         }
         MenuState::ChangeRotation => {
-            render_popup(f, size, app.translations.select_rot, &app.rotations, app.selected_sub_idx);
+            render_popup(
+                f,
+                size,
+                app.translations.select_rot,
+                &app.rotations,
+                app.selected_sub_idx,
+            );
         }
         _ => {}
     }
@@ -208,19 +237,39 @@ fn draw_monitor_box(f: &mut Frame, area: Rect, monitor: &Monitor, index: usize, 
 
     let mut lines = vec![
         Line::from(vec![
-            Span::styled(format!("{}: ", app.translations.label_port), Style::default().fg(Color::DarkGray)),
-            Span::styled(&monitor.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            Span::styled(format!(" ({})", type_str), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{}: ", app.translations.label_port),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                &monitor.name,
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" ({})", type_str),
+                Style::default().fg(Color::DarkGray),
+            ),
         ]),
         Line::from(vec![
-            Span::styled(format!("{}: ", app.translations.label_model), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{} {}", monitor.make, monitor.model), Style::default().fg(Color::White)),
+            Span::styled(
+                format!("{}: ", app.translations.label_model),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!("{} {}", monitor.make, monitor.model),
+                Style::default().fg(Color::White),
+            ),
         ]),
     ];
 
     if monitor.disabled {
         lines.push(Line::from(vec![
-            Span::styled(format!("{}: ", app.translations.label_status), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{}: ", app.translations.label_status),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(app.translations.disabled, Style::default().fg(Color::Red)),
         ]));
         // Muted lines to preserve height structure cleanly
@@ -231,38 +280,81 @@ fn draw_monitor_box(f: &mut Frame, area: Rect, monitor: &Monitor, index: usize, 
     } else {
         if !monitor.mirror_of.is_empty() && monitor.mirror_of != "none" {
             lines.push(Line::from(vec![
-                Span::styled(format!("{}: ", app.translations.label_status), Style::default().fg(Color::DarkGray)),
-                Span::styled(format!("{} {}", app.translations.label_mirroring, monitor.mirror_of), Style::default().fg(Color::Magenta)),
+                Span::styled(
+                    format!("{}: ", app.translations.label_status),
+                    Style::default().fg(Color::DarkGray),
+                ),
+                Span::styled(
+                    format!("{} {}", app.translations.label_mirroring, monitor.mirror_of),
+                    Style::default().fg(Color::Magenta),
+                ),
             ]));
         } else {
             lines.push(Line::from(vec![
-                Span::styled(format!("{}: ", app.translations.label_res), Style::default().fg(Color::DarkGray)),
-                Span::styled(format!("{}x{}@{}Hz", monitor.width, monitor.height, monitor.refresh_rate.round()), Style::default().fg(Color::White)),
+                Span::styled(
+                    format!("{}: ", app.translations.label_res),
+                    Style::default().fg(Color::DarkGray),
+                ),
+                Span::styled(
+                    format!(
+                        "{}x{}@{}Hz",
+                        monitor.width,
+                        monitor.height,
+                        monitor.refresh_rate.round()
+                    ),
+                    Style::default().fg(Color::White),
+                ),
             ]));
         }
         lines.push(Line::from(vec![
-            Span::styled(format!("{}: ", app.translations.label_scale), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{}x", monitor.scale), Style::default().fg(Color::White)),
+            Span::styled(
+                format!("{}: ", app.translations.label_scale),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!("{}x", monitor.scale),
+                Style::default().fg(Color::White),
+            ),
         ]));
         lines.push(Line::from(vec![
-            Span::styled(format!("{}: ", app.translations.label_pos), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{}x{}", monitor.x, monitor.y), Style::default().fg(Color::White)),
+            Span::styled(
+                format!("{}: ", app.translations.label_pos),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!("{}x{}", monitor.x, monitor.y),
+                Style::default().fg(Color::White),
+            ),
         ]));
         lines.push(Line::from(vec![
-            Span::styled(format!("{}: ", app.translations.label_rot), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{}°", monitor.transform * 90), Style::default().fg(Color::White)),
+            Span::styled(
+                format!("{}: ", app.translations.label_rot),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!("{}°", monitor.transform * 90),
+                Style::default().fg(Color::White),
+            ),
         ]));
     }
 
     let mut status_line = Vec::new();
     if !monitor.disabled {
-        status_line.push(Span::styled(format!("* {} *", app.translations.active), Style::default().fg(Color::Green)));
+        status_line.push(Span::styled(
+            format!("* {} *", app.translations.active),
+            Style::default().fg(Color::Green),
+        ));
     }
     if monitor.focused {
         if !status_line.is_empty() {
             status_line.push(Span::styled("  ", Style::default()));
         }
-        status_line.push(Span::styled(format!("* {} *", app.translations.focused), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        status_line.push(Span::styled(
+            format!("* {} *", app.translations.focused),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ));
     }
     lines.push(Line::from(status_line));
 
@@ -273,7 +365,7 @@ fn draw_monitor_box(f: &mut Frame, area: Rect, monitor: &Monitor, index: usize, 
 fn render_popup(f: &mut Frame, area: Rect, title: &str, items: &[String], selected_idx: usize) {
     // Dynamic popup dimensions based on contents
     let popup_h = (items.len() + 2) as u16;
-    
+
     let mut max_len = 25;
     for item in items {
         if item.len() > max_len {

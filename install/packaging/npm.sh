@@ -1,8 +1,8 @@
-omybuntu-npm-install @openai/codex codex
-omybuntu-npm-install @google/gemini-cli gemini
-omybuntu-npm-install @github/copilot copilot
-omybuntu-npm-install opencode-ai opencode
-omybuntu-npm-install playwright playwright-cli
-omybuntu-npm-install @earendil-works/pi-coding-agent pi
-omybuntu-npm-install @kitlangton/ghui ghui
-omybuntu-npm-install hunkdiff hunk
+omyvoid-npm-install @openai/codex codex
+omyvoid-npm-install @google/gemini-cli gemini
+omyvoid-npm-install @github/copilot copilot
+omyvoid-npm-install opencode-ai opencode
+omyvoid-npm-install playwright playwright-cli
+omyvoid-npm-install @earendil-works/pi-coding-agent pi
+omyvoid-npm-install @kitlangton/ghui ghui
+omyvoid-npm-install hunkdiff hunk

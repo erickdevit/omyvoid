@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# omyvoid:summary=Remove all the named packages from the system if they're installed (otherwise ignore).
+# omyvoid:args=<packages...>
+# omyvoid:requires-sudo=true
+
+for pkg in "$@"; do
+  if xbps-query "$pkg" &>/dev/null; then
+    sudo xbps-remove -Ry "$pkg"
+  fi
+done

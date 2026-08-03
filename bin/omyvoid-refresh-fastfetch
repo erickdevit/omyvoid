@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite the user config for fastfetch with the Omyvoid default.
+
+omyvoid-refresh-config fastfetch/config.jsonc

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# omyvoid:summary=Clean and complete TUI for monitor management
+
+set -euo pipefail
+
+OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+
+# Search order:
+# 1. /usr/local/bin/omyvoid-tui-monitors
+# 2. $OMYVOID_PATH/installer/target/release/omyvoid-tui-monitors
+# 3. Compile dynamically and run the debug build
+
+BINARY=""
+if [[ -x /usr/local/bin/omyvoid-tui-monitors ]]; then
+  BINARY="/usr/local/bin/omyvoid-tui-monitors"
+elif [[ -x "$OMYVOID_PATH/installer/target/release/omyvoid-tui-monitors" ]]; then
+  BINARY="$OMYVOID_PATH/installer/target/release/omyvoid-tui-monitors"
+elif [[ -x "$OMYVOID_PATH/installer/target/debug/omyvoid-tui-monitors" ]]; then
+  BINARY="$OMYVOID_PATH/installer/target/debug/omyvoid-tui-monitors"
+else
+  # Compile on the fly
+  echo "Compiling monitors TUI..."
+  cargo build --manifest-path "$OMYVOID_PATH/installer/Cargo.toml" --bin omyvoid-tui-monitors
+  BINARY="$OMYVOID_PATH/installer/target/debug/omyvoid-tui-monitors"
+fi
+
+exec "$BINARY" "$@"

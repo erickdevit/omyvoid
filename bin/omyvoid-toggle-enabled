@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Check if a toggle is enabled (flag file exists)
+# omyvoid:args=<flag-name>
+
+[[ -f "$HOME/.local/state/omyvoid/toggles/$1" ]]

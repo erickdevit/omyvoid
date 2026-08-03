@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# omyvoid:summary=Edit, set, or reset About branding
+# omyvoid:group=branding
+# omyvoid:name=about
+# omyvoid:args=<image|text|reset>
+# omyvoid:examples=omyvoid branding about image | omyvoid branding about text | omyvoid branding about reset
+
+set -euo pipefail
+
+SOURCE_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+case "${1:-}" in
+image)
+  picker_msg=$(printf "$I18N_BRANDING_PICK_IMAGE" "$SOURCE_DIR")
+  image=$(omyvoid-menu-file "$picker_msg" "${SOURCE_DIR}" "svg png")
+  if [[ -n $image ]] && omyvoid-transcode-ascii "$image" ~/.config/omyvoid/branding/about.txt --width 54 --height 26; then
+    omyvoid-launch-about >/dev/null 2>&1
+  fi
+  ;;
+text)
+  omyvoid-launch-editor ~/.config/omyvoid/branding/about.txt >/dev/null 2>&1 && omyvoid-launch-about >/dev/null 2>&1
+  ;;
+reset)
+  cp "$OMYVOID_PATH/icon.txt" ~/.config/omyvoid/branding/about.txt && omyvoid-launch-about >/dev/null 2>&1
+  ;;
+*)
+  echo "Usage: omyvoid-branding-about <image|text|reset>" >&2
+  exit 1
+  ;;
+esac

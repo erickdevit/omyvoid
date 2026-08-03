@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Reload hyprland configuration (used by the Omyvoid theme switching).
+
+hyprctl reload >/dev/null

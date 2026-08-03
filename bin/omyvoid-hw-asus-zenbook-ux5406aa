@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Detect ASUS Zenbook UX5406AA series laptops on Intel Panther Lake.
+
+omyvoid-hw-match "ux5406aa" && omyvoid-hw-intel-ptl

@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Omybuntu
+about: Suggest an idea for Omyvoid
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''
@@ -19,4 +19,4 @@ A clear and concise description of any alternative solutions or features you've 
 Add any other context or screenshots about the feature request here.
 
 **Omarchy Parity**
-Does this feature exist in the original Omarchy project, or is it unique to Omybuntu?
+Does this feature exist in the original Omarchy/Omybuntu project, or is it unique to Omyvoid?

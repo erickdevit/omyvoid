@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# omyvoid:summary=Upload installation, socklog, or XBPS diagnostics to 0x0.st
+# omyvoid:args=[install|this-boot|last-boot|installed]
+# omyvoid:hidden=true
+
+set -euo pipefail
+
+log_type=${1:-install}
+temporary=$(mktemp /tmp/omyvoid-upload.XXXXXX)
+trap 'rm -f "$temporary"' EXIT
+
+{
+  echo "Omyvoid diagnostics"
+  echo "Date: $(date --iso-8601=seconds)"
+  echo "Host: $(hostname)"
+  echo "Kernel: $(uname -r)"
+  echo
+} > "$temporary"
+
+case "$log_type" in
+  install)
+    cat /var/log/omyvoid-install.log >> "$temporary" 2>/dev/null || true
+    ;;
+  this-boot)
+    tail -n 5000 /var/log/socklog/everything/current >> "$temporary" 2>/dev/null || true
+    ;;
+  last-boot)
+    find /var/log/socklog/everything -maxdepth 1 -type f ! -name current -print0 2>/dev/null \
+      | sort -z | tail -z -n 4 | xargs -0 -r cat >> "$temporary"
+    ;;
+  installed|system-info)
+    xbps-query -l >> "$temporary"
+    ;;
+  *)
+    echo "Usage: omyvoid upload log [install|this-boot|last-boot|installed]" >&2
+    exit 2
+    ;;
+esac
+
+url=$(curl -fsS -F "file=@$temporary" -F expires=24 https://0x0.st)
+echo "Log uploaded for 24 hours: $url"

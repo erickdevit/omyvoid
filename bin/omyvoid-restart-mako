@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Reload mako configuration (used by the Omyvoid theme switching).
+
+makoctl reload

@@ -1,148 +1,75 @@
-# Omybuntu
+# Omyvoid
 
-<p align="center">
-  <img src="themes/omybuntu/preview.png" alt="Omybuntu Theme Preview" width="100%">
-</p>
+Omyvoid porta a experiência do Omybuntu/Omarchy para o Void Linux `x86_64-glibc`. O projeto usa apenas XBPS, runit, Btrfs, dracut e Limine como base de instalação, serviços, armazenamento e boot.
 
-Omybuntu is an unofficial, highly optimized port of Omarchy and Omakub designed specifically for the Debian/Ubuntu ecosystem. It maintains the original philosophy of creating an opinionated, beautiful, and developer-focused desktop environment using tiling window managers, while delivering rock-solid stability and modern package compatibility on Ubuntu bases.
+> Estado: `0.1.0-dev.1`. O código está em desenvolvimento; ainda não há uma release estável ou ISO indicada para máquinas de produção.
 
----
+## Arquitetura
 
-## Key Features
+- Instalador TUI para apagar um disco ou instalar no espaço livre ao lado do Windows.
+- UEFI obrigatório, Secure Boot desativado e `/boot` FAT32 de 2 GiB.
+- Raiz Btrfs obrigatória, opcionalmente dentro de LUKS2/Argon2id.
+- Subvolumes `@`, `@home`, `@log`, `@xbps` e `@snapshots`, com `noatime,compress=zstd`.
+- Limine e UKIs produzidas por dracut; GRUB não é instalado.
+- Até cinco snapshots da raiz pelo Snapper, inicializáveis com OverlayFS e restauráveis sem alterar `/home`, `/var/log` ou o cache XBPS.
+- Serviços de sistema e usuário supervisionados pelo runit; áudio PipeWire/WirePlumber e sessão Hyprland iniciada pelo SDDM.
+- ISO live offline baseada no `void-mklive`, finalizada com Limine e `xorriso` para UEFI x86_64.
 
-* **Window Manager**: Pre-configured Hyprland session offering smooth animations, tiling, and keyboard-centric window layouts.
-* **Modern Shell & Terminal**: Foot terminal emulator configured with Starship prompt, zoxide, eza, fzf, lazygit, tmux, and btop.
-* **Multilingual Installer**: Interactive installation wizard supporting English, Portuguese (Brasil), and Spanish.
-* **Theme Support**: Over 20 curated themes (Catppuccin, Gruvbox, Tokyo Night, Nord, and more) switchable instantly.
-* **Modular CLI**: Command-line interface with a clean route manager that handles all configuration, updates, packages, and theme changes under the unified `omybuntu` command.
-* **TUI Apps**: Integrated lightweight terminal user interfaces for system operations including Impala (Wi-Fi), Bluetui (Bluetooth), Wiremix (Audio), and Cliamp (Audio playback).
-* **Automated Migration System**: Automated timestamp-based configuration migrations that run transparently during repository updates.
+## Interfaces
 
----
-
-## Project Architecture and Components
-
-The repository is organized to separate defaults, user configurations, automation scripts, and command-line helpers.
-
-### 1. Modular Command Routing (bin/omybuntu)
-Instead of forcing users to remember individual helper scripts, Omybuntu provides a main binary (`bin/omybuntu`) that scans the `bin/` directory and exposes command routes. Commands use a structured prefix naming scheme:
-* `cmd-`: General CLI check utilities.
-* `capture-`: Screenshot, screen recording, and text-extraction tools.
-* `pkg-`: Package management helper functions.
-* `hw-`: Hardware and device feature detection.
-* `refresh-`: Tools to copy/reset default configuration templates to the user space.
-* `install-`: Installers for optional developer tools, browsers, and game launchers.
-* `launch-`: Application launchers and runners.
-* `theme-`: Theme settings, background switchers, and template renderers.
-* `update-`: Systems and keyring updater scripts.
-
-To run a sub-command, you can execute:
-```bash
-omybuntu theme set gruvbox
+```text
+omyvoid install
+omyvoid update
+omyvoid pkg restricted install <pacote>
+omyvoid snapshot create|list|restore|undo
+omyvoid boot refresh|repair
+omyvoid recovery
 ```
 
-### 2. Configuration & Theme System
-* **Templates**: Located in `default/themed/*.tpl`, these files contain placeholders like `{{ accent }}` or `{{ background }}`.
-* **Color Definitions**: Found in `themes/*/colors.toml`, specifying colors for every themed element.
-* **Refresh Pattern**: When a theme is updated, the template renderers read the theme definitions and dynamically rewrite configuration files for Waybar, Foot, Hyprland, Hyprlock, Kvantum, and GDM/SDDM.
-* **Hyprland Configuration**: Note that Omybuntu uses `.conf` files for Hyprland configuration (unlike Omarchy, which uses `.lua`). This is a deliberate choice; we will maintain the `.conf` format until the Ubuntu packages for Hyprland are updated to fully support Lua.
-* **Config Overwrites**: The utility `omybuntu-refresh-config` copies default templates under `config/` to the user's `~/.config/` with automatic backups.
+## Instalação sobre Void base
 
-### 3. Integrated Launchers & TUIs
-Omybuntu downloads and configures external launcher engines and TUIs during the setup process:
-* **Walker**: A fast, extendable application runner.
-* **Elephant**: A highly pluggable keyboard launcher.
-* **Impala**: Terminal-based Wi-Fi management utility.
-* **Bluetui**: Terminal-based Bluetooth management.
-* **Wiremix**: Audio mixer TUI.
-* **Cliamp**: Lightweight music player.
+A instalação por script aceita somente um Void Linux `x86_64-glibc` limpo, iniciado em UEFI, com Secure Boot desativado. A raiz já precisa ser Btrfs e `/boot` precisa ser uma partição FAT32. O preflight encerra antes de alterar o sistema quando essas condições não são atendidas.
 
-### 4. Timestamp-based Migrations
-To ensure configuration consistency when pulling updates, Omybuntu contains a migration framework under `migrations/`. Migrations are:
-* Sourced sequentially rather than executed directly.
-* Named after the Unix timestamp of the last commit.
-* Used to patch user configuration files, remove old packages, or perform one-off repair work without user intervention.
-
----
-
-## Theme Gallery
-
-Omybuntu comes preconfigured with beautiful dark and light themes. Previews of some popular styles:
-
-<table align="center">
-  <tr>
-    <td align="center"><b>Catppuccin</b><br/><img src="themes/catppuccin/preview.png" width="350"/></td>
-    <td align="center"><b>Gruvbox</b><br/><img src="themes/gruvbox/preview.png" width="350"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Tokyo Night</b><br/><img src="themes/tokyo-night/preview.png" width="350"/></td>
-    <td align="center"><b>Nord</b><br/><img src="themes/nord/preview.png" width="350"/></td>
-  </tr>
-</table>
-
----
-
-## Installation Options
-
-### 1. Via Installation Script (On an existing Ubuntu System)
-
-To install Omybuntu directly on an active, clean Ubuntu installation, execute the boot script using curl or wget:
+Durante o desenvolvimento:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/erickdevit/omybuntu/master/boot.sh)"
+OMYVOID_REF=dev bash -c "$(curl -fsSL https://raw.githubusercontent.com/erickdevit/omyvoid/dev/boot.sh)"
 ```
 
-Alternatively, you can use wget:
+Para uma instalação em disco vazio ou dual boot, inicie a ISO e execute `omyvoid install`. LUKS é selecionado por padrão, mas pode ser desativado. Não é criada partição swap; zram é habilitado por padrão.
+
+## Boot e recuperação
+
+O arquivo canônico é `/boot/limine.conf`. As UKIs ficam em `/boot/EFI/Linux`, o executável do Limine em `/boot/EFI/Omyvoid`, e `/boot/EFI/BOOT/BOOTX64.EFI` funciona como fallback removível. O menu apresenta o sistema atual, fallback/recuperação, snapshots e carregadores EFI detectados.
+
+`omyvoid update` cria um snapshot antes de executar a atualização XBPS e reconstrói as UKIs e o menu. A mídia live fornece `omyvoid recovery` para desbloquear LUKS, montar a raiz Btrfs, restaurar ou desfazer snapshots e reparar o boot.
+
+## Pacotes e distribuição
+
+Pacotes oficiais vêm dos repositórios Void, nonfree e multilib. Hyprland vem do Blackhole-VL. Integrações próprias são publicadas no repositório XBPS assinado do Omyvoid. Aplicativos restritos são compilados a partir de templates `xbps-src` com `XBPS_ALLOW_RESTRICTED=yes`; Flatpak, Snap, AppImage e instaladores binários avulsos não fazem parte do produto.
+
+Builds de desenvolvimento e releases são produzidos em runner Void Linux self-hosted. A ISO, o repositório XBPS, checksums e assinaturas serão publicados no GitHub e no Cloudflare R2.
+
+## Desenvolvimento
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/erickdevit/omybuntu/master/boot.sh | bash
+./test/run.sh
+cargo test --manifest-path installer/Cargo.toml
+shellcheck bin/omyvoid* install/**/*.sh test/*.sh
 ```
 
-To target a specific branch or a custom fork for deployment, specify `OMYBUNTU_REPO` and `OMYBUNTU_REF` environment variables:
+O build completo da ISO deve ser executado em Void Linux:
 
 ```bash
-OMYBUNTU_REPO="erickdevit/omybuntu" OMYBUNTU_REF="master" bash -c "$(curl -fsSL https://raw.githubusercontent.com/erickdevit/omybuntu/master/boot.sh)"
+install/iso/build-iso.sh
 ```
 
-### 2. Ready-to-Run ISO
+Consulte [AGENTS.md](AGENTS.md) para estilo e convenções e [CONTRIBUTING.md](CONTRIBUTING.md) para o fluxo de contribuição.
 
-Versioned AMD64 ISO builds based on Ubuntu 26.04 are published through
-[Omybuntu GitLab Releases](https://gitlab.com/erickwornex/omybuntu/-/releases).
-Ubuntu 26.04 on AMD64 is the supported base for Omybuntu 1.0; other Ubuntu
-versions and CPU architectures are not part of the 1.0 compatibility matrix.
+## Procedência
 
-Each tagged release includes the ISO, its SHA-256 checksum, a detached GPG
-signature, and the public release key. Download all four files and verify them
-before writing the ISO to a USB drive:
+O histórico começa com um snapshot sem histórico anterior do [Omybuntu](https://github.com/erickdevit/omybuntu), commit `9e89dd355c48ef74eeead1ccf5a677d15293c826`. O Omybuntu, por sua vez, porta o [Omarchy](https://github.com/basecamp/omarchy). Detalhes e atribuições adicionais estão em [NOTICE](NOTICE).
 
-```bash
-sha256sum --check omybuntu-v1.0.0-amd64.iso.sha256
-gpg --import omybuntu-release-key.asc
-gpg --fingerprint
-gpg --verify omybuntu-v1.0.0-amd64.iso.sig omybuntu-v1.0.0-amd64.iso
-```
+## Licença
 
-Compare the imported key fingerprint with the fingerprint shown in the GitLab
-release notes. Back up important data before installation, especially when
-repartitioning a disk or configuring Windows dual boot.
-
----
-
-## Acknowledgements & Origin (Créditos)
-
-Omybuntu would not exist without the incredible work of the projects it builds upon. **All conceptual credit, design philosophy, and thousands of hours of initial development belong to the original creators:**
-
-* **[Omarchy](https://github.com/basecamp/omarchy)**: Omybuntu is a direct fork and port of Omarchy. We owe our entire foundation to the Omarchy contributors who built the Arch-based vision.
-* **[Omakub](https://omakub.org/)**: The original visionary project created by David Heinemeier Hansson (DHH) and the Basecamp team. Omakub set the gold standard for what a beautiful, modern, and opinionated Linux distribution should look and feel like.
-
-Omybuntu aims to be a faithful continuation of this vision, bridging the gap between Omarchy's bleeding-edge Arch architecture and the widespread accessibility of Ubuntu.
-
----
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on our professional workflow, issue templates, and pull request standards.
-
-## License
-
-Omybuntu is released under the [MIT License](https://opensource.org/licenses/MIT).
+O código original deste repositório é distribuído sob a [licença MIT](LICENSE). Componentes e recursos de terceiros permanecem sob suas respectivas licenças.

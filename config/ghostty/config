@@ -1,5 +1,5 @@
 # Dynamic theme colors
-config-file = ?"~/.config/omybuntu/current/theme/ghostty.conf"
+config-file = ?"~/.config/omyvoid/current/theme/ghostty.conf"
 
 # Font
 font-family = "JetBrainsMono Nerd Font"

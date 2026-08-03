@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# omyvoid:summary=Remove the optional Btrfs hibernation swapfile and UKI arguments
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+source /etc/default/limine
+arguments=()
+for argument in ${OMYVOID_KERNEL_CMDLINE:-}; do
+  case "$argument" in resume=*|resume_offset=*|rtc_cmos.use_acpi_alarm=*) arguments+=("$argument") ;; esac
+done
+sudo swapoff /swap/swapfile 2>/dev/null || true
+sudo sed -i '\|/swap/swapfile|d' /etc/fstab
+sudo rm -f /swap/swapfile /etc/dracut.conf.d/70-omyvoid-resume.conf
+sudo btrfs subvolume delete /swap 2>/dev/null || true
+(( ${#arguments[@]} > 0 )) && sudo omyvoid-boot-cmdline-remove "${arguments[@]}"
+echo "Hibernation configuration removed."

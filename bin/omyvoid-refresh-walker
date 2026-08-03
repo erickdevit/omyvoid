@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# omyvoid:summary=Overwrite the user configs for the Walker application launcher (which also powers the Omyvoid Menu) and restart the services.
+
+mkdir -p ~/.config/autostart/
+cp $OMYVOID_PATH/default/walker/walker.desktop ~/.config/autostart/
+
+# Refresh configs
+omyvoid-refresh-config walker/config.toml
+omyvoid-refresh-config elephant/calc.toml
+omyvoid-refresh-config elephant/desktopapplications.toml
+
+# Link all elephant menus
+mkdir -p ~/.config/elephant/menus
+for menu in $OMYVOID_PATH/default/elephant/*.lua; do
+  ln -snf "$menu" ~/.config/elephant/menus/"$(basename "$menu")"
+done
+
+# Restart service
+omyvoid-restart-walker

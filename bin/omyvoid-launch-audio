@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch the Omyvoid audio controls TUI (provided by wiremix).
+
+omyvoid-launch-or-focus-tui wiremix

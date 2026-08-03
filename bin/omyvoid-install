@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# omyvoid:summary=Start the Omyvoid TUI installer
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+(( EUID == 0 )) || exec sudo "$0" "$@"
+exec omyvoid-installer "$@"

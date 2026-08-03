@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# omyvoid:summary=Update Omyvoid and system packages
+# omyvoid:args=[-y]
+# omyvoid:examples=omyvoid update | omyvoid update -y
+# omyvoid:requires-sudo=true
+
+set -e
+
+# Run the update inside a PTY so XBPS keeps showing progress
+# while still logging the full session for later analysis.
+if [[ -z $OMYVOID_UPDATE_LOGGED ]]; then
+  script_command=$(printf '%q ' "$0" "$@")
+  exec env OMYVOID_UPDATE_LOGGED=1 script -qefc "$script_command" "/tmp/omyvoid-update.log"
+fi
+
+trap 'echo ""; echo -e "\033[0;31mSomething went wrong during the update!\n\nPlease review the output above carefully, correct the error, and retry the update.\n\nIf you need assistance, get help from the community at https://omyvoid.org/discord\033[0m"' ERR
+
+if [[ ${1:-} == "-y" ]] || omyvoid-update-confirm; then
+  omyvoid-snapshot create || (($? == 127))
+  omyvoid-update-git
+  omyvoid-update-perform
+fi

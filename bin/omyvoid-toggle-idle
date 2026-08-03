@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle hypridle idle locking
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if pgrep -x hypridle >/dev/null; then
+  pkill -x hypridle
+  omyvoid-notification-send -g 󱫖 "$I18N_TOG_IDLE_STOP"
+else
+  hypridle >/dev/null 2>&1 &
+  omyvoid-notification-send -g 󱫖 "$I18N_TOG_IDLE_START"
+fi
+
+pkill -RTMIN+9 waybar

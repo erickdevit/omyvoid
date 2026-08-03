@@ -1,39 +1,26 @@
-# Omybuntu ${RELEASE_VERSION}
+# Omyvoid ${RELEASE_VERSION}
 
-Official Omybuntu AMD64 ISO based on Ubuntu 26.04.
+Imagem Omyvoid para Void Linux `x86_64-glibc`, UEFI, Btrfs e Limine.
 
-## Requirements
+## Requisitos
 
-- AMD64 computer with UEFI firmware
-- USB drive large enough for the ISO
-- A verified backup before repartitioning or installing
+- computador x86_64 iniciado em UEFI;
+- Secure Boot desativado;
+- backup verificado antes de alterar partições.
 
-## Download and verify
-
-Download `${RELEASE_FILE}`, `${RELEASE_FILE}.sha256`,
-`${RELEASE_FILE}.sig`, and `omybuntu-release-key.asc` from:
-
-`${RELEASE_PACKAGE_URL}`
+## Verificação
 
 ```bash
 sha256sum --check ${RELEASE_FILE}.sha256
-gpg --import omybuntu-release-key.asc
-gpg --verify ${RELEASE_FILE}.sig ${RELEASE_FILE}
+minisign -Vm ${RELEASE_FILE} -P '${RELEASE_MINISIGN_PUBLIC_KEY}'
 ```
 
-Release signing key fingerprint: `${RELEASE_GPG_FINGERPRINT}`
+Baixe os arquivos pelo GitHub Release ou pela origem pública do Cloudflare R2. Os dois locais devem conter bytes idênticos.
 
-## Installation
+## Instalação
 
-Write the verified ISO to a USB drive, boot it in UEFI mode, and follow the
-graphical installer. Back up all important data before changing disk
-partitions. Installation can erase the selected disk.
+Grave a ISO verificada em uma mídia, inicie em UEFI e selecione o instalador no Limine. A instalação pode apagar o disco selecionado; LUKS é habilitado por padrão.
 
-## Known issues
+## Problemas conhecidos
 
 ${RELEASE_KNOWN_ISSUES}
-
-Report new problems through the
-[Omybuntu GitHub issue tracker](https://github.com/erickdevit/omybuntu/issues)
-and include the release version, hardware details, installation mode, and
-relevant logs.

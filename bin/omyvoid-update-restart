@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# omyvoid:summary=Prompt for required reboot or service restarts after updates
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+echo
+
+confirm_reboot() {
+  gum confirm "$1" && { omyvoid-system-reboot; exit 0; }
+}
+
+running_kernel=$(uname -r)
+kernel_updated=false
+
+latest_kernel=$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -V | tail -n 1)
+if [[ -n $latest_kernel && $running_kernel != "$latest_kernel" ]]; then
+  kernel_updated=true
+fi
+
+if [[ $kernel_updated == "true" ]]; then
+  confirm_reboot "$I18N_UPD_REBOOT_KERNEL"
+elif [[ -f $HOME/.local/state/omyvoid/reboot-required ]]; then
+  confirm_reboot "$I18N_UPD_REBOOT_REQUIRED"
+fi
+
+running_hyprland=$(readlink /proc/$(pgrep -x Hyprland)/exe 2>/dev/null)
+if [[ $running_hyprland == *"(deleted)"* ]]; then
+  confirm_reboot "$I18N_UPD_REBOOT_HYPRLAND"
+fi
+
+for file in "$HOME"/.local/state/omyvoid/restart-*-required; do
+  if [[ -f $file ]]; then
+    filename=$(basename "$file")
+    service=$(echo "$filename" | sed 's/restart-\(.*\)-required/\1/')
+    echo "Restarting $service"
+    omyvoid-state clear "$filename"
+    omyvoid-restart-"$service"
+  fi
+done

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# omyvoid:summary=Display a "Done!" message with a spinner and wait for user to press any key.
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+echo
+gum spin --spinner "globe" --title "$I18N_DONE_PRESS_KEY" -- bash -c 'read -n 1 -s'

@@ -1,1 +1,1 @@
-systemctl --user enable omybuntu-recover-internal-monitor.service
+omyvoid-hw-recover-internal-monitor

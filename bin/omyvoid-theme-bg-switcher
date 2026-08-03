@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# omyvoid:summary=Open the Omyvoid background switcher
+# omyvoid:group=theme
+# omyvoid:name=bg-switcher
+# omyvoid:aliases=omyvoid background
+
+OMYVOID_PATH=${OMYVOID_PATH:-$HOME/.local/share/omyvoid}
+theme_name=$(cat "$HOME/.config/omyvoid/current/theme.name" 2>/dev/null)
+current_background=$(readlink -f "$HOME/.config/omyvoid/current/background" 2>/dev/null)
+
+omyvoid-menu-images \
+  --selected "$current_background" \
+  "$HOME/.config/omyvoid/current/theme/backgrounds" \
+  "$HOME/.config/omyvoid/backgrounds/$theme_name"

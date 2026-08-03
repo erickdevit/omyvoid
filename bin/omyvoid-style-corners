@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# omyvoid:summary=Set Hyprland, Hyprlock, Mako, and Walker corners to sharp or round
+# omyvoid:args=<sharp|round>
+# omyvoid:examples=omyvoid style corners round | omyvoid style corners sharp
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+if [[ $1 != "sharp" && $1 != "round" ]]; then
+  echo "Usage: omyvoid-style-corners <sharp|round>"
+  exit 1
+fi
+
+omyvoid-style-corners-hyprland "$1"
+omyvoid-style-corners-hyprlock "$1"
+omyvoid-style-corners-mako "$1"
+omyvoid-style-corners-walker "$1"
+
+case $1 in
+  sharp) omyvoid-notification-send "$I18N_STYLE_CORNERS_SHARP" -g 󰝣 ;;
+  round) omyvoid-notification-send "$I18N_STYLE_CORNERS_ROUND" -g 󰘇 ;;
+esac

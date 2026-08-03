@@ -1,3 +1,3 @@
-if omybuntu-hw-surface; then
-  omybuntu-pkg-add linux-firmware-marvell
+if omyvoid-hw-surface; then
+  omyvoid-pkg-add linux-firmware-marvell
 fi

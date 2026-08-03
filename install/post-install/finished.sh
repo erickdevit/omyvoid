@@ -6,13 +6,13 @@ echo_in_style() {
 
 clear
 echo
-cat "$OMYBUNTU_PATH"/logo.txt 2>/dev/null || true
+cat "$OMYVOID_PATH"/logo.txt 2>/dev/null || true
 echo
 
 # Display installation time if available
-if [[ -f $OMYBUNTU_INSTALL_LOG_FILE ]] && grep -q "Total:" "$OMYBUNTU_INSTALL_LOG_FILE" 2>/dev/null; then
+if [[ -f $OMYVOID_INSTALL_LOG_FILE ]] && grep -q "Total:" "$OMYVOID_INSTALL_LOG_FILE" 2>/dev/null; then
   echo
-  TOTAL_TIME=$(tail -n 20 "$OMYBUNTU_INSTALL_LOG_FILE" | grep "^Total:" | sed 's/^Total:[[:space:]]*//')
+  TOTAL_TIME=$(tail -n 20 "$OMYVOID_INSTALL_LOG_FILE" | grep "^Total:" | sed 's/^Total:[[:space:]]*//')
   if [[ -n $TOTAL_TIME ]]; then
     echo_in_style "$(printf "$I18N_INSTALLED_IN" "$TOTAL_TIME")"
   fi
@@ -20,13 +20,13 @@ else
   echo_in_style "$I18N_FINISHED"
 fi
 
-if sudo test -f /etc/sudoers.d/99-omybuntu-installer; then
-  sudo rm -f /etc/sudoers.d/99-omybuntu-installer &>/dev/null
+if sudo test -f /etc/sudoers.d/99-omyvoid-installer; then
+  sudo rm -f /etc/sudoers.d/99-omyvoid-installer &>/dev/null
 fi
 
 # Skip interactive prompt in ISO/chroot builds
-if [[ -n ${OMYBUNTU_ISO_BUILD:-} || -n ${OMYBUNTU_CHROOT_INSTALL:-} ]]; then
-  touch /var/tmp/omybuntu-install-completed
+if [[ -n ${OMYVOID_ISO_BUILD:-} || -n ${OMYVOID_CHROOT_INSTALL:-} ]]; then
+  touch /var/tmp/omyvoid-install-completed
   exit 0
 fi
 

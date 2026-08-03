@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch the Omyvoid wifi controls (provided by the Impala TUI).
+
+rfkill unblock wifi
+omyvoid-launch-or-focus-tui impala

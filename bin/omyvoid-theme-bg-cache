@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# omyvoid:summary=Cache background switcher thumbnails for the current theme
+
+theme_name=$(cat "$HOME/.config/omyvoid/current/theme.name" 2>/dev/null)
+
+omyvoid-menu-images \
+  --cache-only \
+  "$HOME/.config/omyvoid/current/theme/backgrounds" \
+  "$HOME/.config/omyvoid/backgrounds/$theme_name"

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# omyvoid:summary=Select a drive from a list with info that includes space and brand. Used by omyvoid-drive-password.
+
+if (($# == 0)); then
+  drives=$(lsblk -dpno NAME | grep -E '/dev/(sd|hd|vd|nvme|mmcblk|xv)')
+else
+  drives="$@"
+fi
+
+drives_with_info=""
+while IFS= read -r drive; do
+  [[ -n $drive ]] || continue
+  drives_with_info+="$(omyvoid-drive-info "$drive")"$'\n'
+done <<<"$drives"
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+selected_drive="$(printf "%s" "$drives_with_info" | gum choose --header "$I18N_DRIVE_SELECT_HEADER")" || exit 1
+printf "%s\n" "$selected_drive" | awk '{print $1}'

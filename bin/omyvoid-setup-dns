@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# omyvoid:summary=Configure DNS on active NetworkManager connections
+# omyvoid:args=[Cloudflare|Google|Quad9|DHCP|Custom]
+# omyvoid:requires-sudo=true
+
+set -euo pipefail
+
+provider=${1:-}
+if [[ -z $provider ]]; then
+  provider=$(gum choose Cloudflare Google Quad9 DHCP Custom)
+fi
+
+case "${provider,,}" in
+  cloudflare) dns4="1.1.1.1 1.0.0.1"; dns6="2606:4700:4700::1111 2606:4700:4700::1001" ;;
+  google) dns4="8.8.8.8 8.8.4.4"; dns6="2001:4860:4860::8888 2001:4860:4860::8844" ;;
+  quad9) dns4="9.9.9.9 149.112.112.112"; dns6="2620:fe::fe 2620:fe::9" ;;
+  dhcp) dns4=""; dns6="" ;;
+  custom)
+    read -r -p "IPv4 DNS servers: " dns4
+    read -r -p "IPv6 DNS servers (optional): " dns6
+    [[ -n $dns4 ]] || { echo "At least one DNS server is required" >&2; exit 1; }
+    ;;
+  *) echo "Unknown DNS provider: $provider" >&2; exit 2 ;;
+esac
+
+mapfile -t connections < <(nmcli -t -f NAME connection show --active | sed '/^$/d')
+(( ${#connections[@]} > 0 )) || { echo "No active NetworkManager connection" >&2; exit 1; }
+for connection in "${connections[@]}"; do
+  if [[ ${provider,,} == dhcp ]]; then
+    sudo nmcli connection modify "$connection" ipv4.ignore-auto-dns no ipv4.dns "" ipv6.ignore-auto-dns no ipv6.dns ""
+  else
+    sudo nmcli connection modify "$connection" ipv4.ignore-auto-dns yes ipv4.dns "$dns4" ipv6.ignore-auto-dns yes ipv6.dns "$dns6"
+  fi
+  sudo nmcli connection up "$connection"
+done

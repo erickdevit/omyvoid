@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Restart the supervised SwayOSD server
+
+set -euo pipefail
+sv restart "$HOME/.config/service/swayosd"

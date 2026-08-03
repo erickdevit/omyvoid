@@ -1,8 +1,0 @@
-#!/bin/bash
-
-# omybuntu:summary=Open Voxtype AI model setup
-
-set -e
-
-omybuntu-launch-floating-terminal-with-presentation "voxtype setup model"
-omybuntu-restart-waybar

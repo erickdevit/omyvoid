@@ -1,12 +1,12 @@
 # Ensure we have gum available
 if ! command -v gum &>/dev/null; then
-  omybuntu-pkg-add gum
+  omyvoid-pkg-add gum
 fi
 
 # In chroot/ISO builds there is no proper controlling terminal — accessing
 # /dev/tty from a background process group triggers SIGTTOU and hangs.
 # Use safe defaults for everything.
-if [[ -n ${OMYBUNTU_ISO_BUILD:-} || -n ${OMYBUNTU_CHROOT_INSTALL:-} ]]; then
+if [[ -n ${OMYVOID_ISO_BUILD:-} || -n ${OMYVOID_CHROOT_INSTALL:-} ]]; then
   export TERM_WIDTH=80
   export TERM_HEIGHT=24
 else
@@ -29,7 +29,7 @@ else
   fi
 fi
 
-export LOGO_PATH="$OMYBUNTU_PATH/logo.txt"
+export LOGO_PATH="$OMYVOID_PATH/logo.txt"
 export LOGO_WIDTH=$(awk '{ if (length > max) max = length } END { print max+0 }' "$LOGO_PATH" 2>/dev/null || echo 0)
 export LOGO_HEIGHT=$(wc -l <"$LOGO_PATH" 2>/dev/null || echo 0)
 
@@ -54,8 +54,8 @@ export GUM_TABLE_PADDING="$PADDING"
 export GUM_CONFIRM_PADDING="$PADDING"
 
 clear_logo() {
-  if [[ -n ${OMYBUNTU_ISO_BUILD:-} || -n ${OMYBUNTU_CHROOT_INSTALL:-} ]]; then
-    echo "Starting Omybuntu installer..."
+  if [[ -n ${OMYVOID_ISO_BUILD:-} || -n ${OMYVOID_CHROOT_INSTALL:-} ]]; then
+    echo "Starting Omyvoid installer..."
     return 0
   fi
 

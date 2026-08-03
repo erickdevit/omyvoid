@@ -13,9 +13,6 @@ sudo ufw allow in proto udp from 192.168.0.0/16 to 172.17.0.1 port 53 comment 'a
 # Turn on the firewall
 sudo ufw --force enable
 
-# Enable UFW systemd service to start on boot
-sudo systemctl enable ufw
-
 # Turn on Docker protections
 sudo ufw-docker install
 sudo ufw reload

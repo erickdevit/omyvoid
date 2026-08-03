@@ -1,85 +1,24 @@
-# Omybuntu release playbook
+# Publicação do Omyvoid
 
-Use this playbook together with `RELEASES_AND_CHANNELS.md`. Never publish a
-stable tag while its physical validation checklist is pending.
+O código é desenvolvido em `dev`, congelado em `rc` e promovido para `main` somente por ação explícita do mantenedor. Este repositório automatiza testes, build, assinatura, publicação e verificação dos artefatos; a decisão de promoção permanece manual.
 
-## One-time project configuration
+## Configuração do runner
 
-1. Create a dedicated signing key offline and store its revocation certificate
-   and backup outside the repository.
-2. Add the protected GitLab CI/CD variables documented in
-   `RELEASES_AND_CHANNELS.md`.
-3. Protect the `v*` tag pattern and the `rc` and `master` branches in GitLab.
-4. Apply equivalent branch protection to `rc` and `master` in GitHub.
+O runner self-hosted deve usar Void Linux `x86_64-glibc` e possuir os rótulos `self-hosted`, `void-linux`, `x86_64` e `omyvoid-builder`. Instale as dependências listadas em `.github/workflows/ci.yml` e configure os segredos:
 
-## Prepare the v1.0 candidate on dev
+- `OMYVOID_XBPS_SIGNING_KEY`: chave RSA PEM do índice e dos pacotes XBPS.
+- `OMYVOID_XBPS_PASSPHRASE`: senha da chave XBPS, quando usada.
+- `OMYVOID_MINISIGN_SECRET_KEY`: conteúdo da chave secreta Minisign.
+- `OMYVOID_MINISIGN_PUBLIC_KEY`: chave pública Minisign.
+- `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID` e `R2_BUCKET`.
+- variável de repositório `OMYVOID_R2_PUBLIC_URL` para a origem pública de download.
 
-The source `version` remains `v1.1.7_dev`. Do not move or recreate its existing
-tag to represent stable 1.0. Commit and push the candidate to both development
-remotes:
+## Fluxo
 
-```bash
-git switch dev
-git push origin dev
-git push gitlab dev
-```
+1. Atualize `version` usando SemVer, por exemplo `0.1.0-dev.2`.
+2. Execute CI na branch `dev`.
+3. Para publicar um artefato de desenvolvimento, acione manualmente o workflow `release` sem criar tag estável.
+4. Crie uma tag `vX.Y.Z-rc.N` a partir da branch `rc` para um candidato.
+5. Quando o mantenedor decidir promover, avance `main` para o mesmo commit e crie a tag assinada `vX.Y.Z`.
 
-Run a manual GitLab pipeline for the `dev` commit and wait for its test and ISO
-build jobs to pass. Manual builds are unsigned and do not create a public
-release.
-
-## First release candidate
-
-Create `rc` from the approved development commit. Change `version` to
-`v1.0.0_rc1`, commit the version change, and publish the branch before its
-signed tag:
-
-```bash
-git switch -c rc dev
-git push --set-upstream origin rc
-git push --set-upstream gitlab rc
-git tag --sign v1.0.0_rc1 --message "Omybuntu v1.0.0_rc1"
-git push gitlab v1.0.0_rc1
-```
-
-After the GitLab pipeline passes, mirror the tag to GitHub and test the
-published artifacts on the hardware matrix:
-
-```bash
-git push origin v1.0.0_rc1
-```
-
-For another candidate, merge the fixes from `dev`, increment the RC number in
-`version`, commit, and repeat with `v1.0.0_rcN`.
-
-## Stable v1.0.0
-
-Complete `release/checklists/v1.0.0.md`, record evidence, replace `pending`
-with `approved`, and change `version` to `v1.0.0`. Commit those release-only
-changes on `rc`, then create `master` from that exact approved commit:
-
-```bash
-git switch rc
-git push origin rc
-git push gitlab rc
-git switch -c master
-git push --set-upstream gitlab master
-git tag --sign v1.0.0 --message "Omybuntu v1.0.0"
-git push gitlab v1.0.0
-```
-
-Wait for the stable pipeline and GitLab Release to succeed. Download and verify
-the ISO, checksum, signature, and public key from a clean environment. Confirm
-the live ISO reports `v1.0.0` and channel `stable`, then mirror the tag:
-
-```bash
-git push origin master
-git push origin v1.0.0
-```
-
-For later stable releases, switch to the existing `master` branch and use a
-fast-forward merge from the approved `rc` commit instead of creating it.
-
-If any GitLab release pipeline fails, do not reuse or move its published tag.
-Fix the problem on `dev`, increment the dev or RC number, and promote a new
-signed tag.
+O workflow recusa tags incompatíveis com o conteúdo do arquivo `version`. Depois do upload, baixa a ISO, checksum e assinatura pela URL pública do R2 e verifica tudo novamente antes de criar a GitHub Release.

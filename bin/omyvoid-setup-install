@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# omyvoid:summary=Omyvoid system installer (TUI wizard)
+# omyvoid:group=setup
+# omyvoid:requires-sudo=true
+
+OMYVOID_PATH="$(dirname "$(dirname "$(readlink -f "$0")")")"
+
+if [[ -x /usr/local/bin/omyvoid-installer ]]; then
+  exec sudo /usr/local/bin/omyvoid-installer "$@"
+fi
+
+# Fallback: configure a compatible Void Linux base installation.
+exec sudo env OMYVOID_PATH="$OMYVOID_PATH" OMYVOID_ONLINE_INSTALL=true bash "$OMYVOID_PATH/install.sh"

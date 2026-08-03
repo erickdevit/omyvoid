@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# omyvoid:summary=Restart Walker and Elephant under user runit supervision
+
+set -euo pipefail
+
+if [[ ${1:-} == --only-if-updated ]]; then
+  now=$(date +%s)
+  updated=false
+  for binary in /usr/bin/walker /usr/bin/elephant /usr/local/bin/walker /usr/local/bin/elephant; do
+    [[ -f $binary ]] || continue
+    (( now - $(stat -c '%Y' "$binary") < 120 )) && updated=true
+  done
+  $updated || exit 0
+fi
+
+sv restart "$HOME/.config/service/elephant"
+sv restart "$HOME/.config/service/walker"

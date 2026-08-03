@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Omyvoid
+Comment=Omyvoid Hyprland session on Void Linux
+Exec=dbus-run-session Hyprland
+TryExec=Hyprland
+DesktopNames=Hyprland
+Type=Application

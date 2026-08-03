@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# omyvoid:summary=Open the current theme's user background folder
+
+CURRENT_THEME_NAME=$(cat "$HOME/.config/omyvoid/current/theme.name")
+THEME_USER_BACKGROUNDS="$HOME/.config/omyvoid/backgrounds/$CURRENT_THEME_NAME"
+
+mkdir -p "$THEME_USER_BACKGROUNDS"
+nautilus "$THEME_USER_BACKGROUNDS"

@@ -1,6 +1,6 @@
-# Contributing to Omybuntu
+# Contributing to Omyvoid
 
-First off, thank you for considering contributing to Omybuntu! It's people like you that make Omybuntu such a great tool.
+First off, thank you for considering contributing to Omyvoid! It's people like you that make Omyvoid such a great tool.
 
 ## Code of Conduct
 By participating in this project, you agree to abide by our Code of Conduct. We expect all contributors to maintain a professional, respectful, and inclusive environment.
@@ -19,16 +19,16 @@ Bugs are tracked as GitHub issues. When you are creating a bug report, please in
 Enhancement suggestions are tracked as GitHub issues. When you are creating an enhancement suggestion, please:
 * Use a clear and descriptive title for the issue to identify the suggestion.
 * Provide a step-by-step description of the suggested enhancement.
-* Explain why this enhancement would be useful to most Omybuntu users.
+* Explain why this enhancement would be useful to most Omyvoid users.
 
 ### Pull Requests
 * Fill in the required template.
 * Do not include issue numbers in the PR title.
 * Include screenshots and animated GIFs in your pull request whenever possible to demonstrate visual changes.
-* Follow the Bash styleguide, Omybuntu architecture, and detailed commit rules defined in `AGENTS.md`.
+* Follow the Bash styleguide, Omyvoid architecture, and detailed commit rules defined in `AGENTS.md`.
 * Write detailed commit messages following the Conventional Commits specification, describing the motivation, design decisions, and what was changed. Avoid generic commit messages.
 * End all files with a newline.
-* Document any new commands with the appropriate `# omybuntu:` metadata tags.
+* Document any new commands with the appropriate `# omyvoid:` metadata tags.
 
 ## Attribution
-Omybuntu is an unofficial port of Omarchy for the Ubuntu ecosystem. When contributing, please ensure that logic ported directly from Omarchy retains its original intent unless adaptation is strictly necessary for Ubuntu compatibility.
+Omyvoid is an unofficial Void Linux port of Omybuntu and Omarchy. Preserve the upstream intent, adapting only the distribution integration required for XBPS, runit, Btrfs, dracut, and Limine.

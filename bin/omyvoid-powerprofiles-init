@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# omyvoid:summary=Set the correct power profile on boot based on current AC/battery state.
+
+if omyvoid-battery-present && ! omyvoid-ac-present; then
+  omyvoid-powerprofiles-set battery
+else
+  omyvoid-powerprofiles-set ac
+fi

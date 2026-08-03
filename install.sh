@@ -3,21 +3,21 @@
 # Exit immediately if a command exits with a non-zero status
 set -eEo pipefail
 
-# Define Omybuntu locations
-export OMYBUNTU_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export OMYBUNTU_INSTALL="$OMYBUNTU_PATH/install"
-export OMYBUNTU_INSTALL_LOG_FILE="/var/log/omybuntu-install.log"
-export PATH="$OMYBUNTU_PATH/bin:$PATH"
+# Define Omyvoid locations
+export OMYVOID_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export OMYVOID_INSTALL="$OMYVOID_PATH/install"
+export OMYVOID_INSTALL_LOG_FILE="/var/log/omyvoid-install.log"
+export PATH="$OMYVOID_PATH/bin:$PATH"
 
 # Sourced helpers (loads gum and logo functions)
-source "$OMYBUNTU_INSTALL/helpers/all.sh"
+source "$OMYVOID_INSTALL/helpers/all.sh"
 
 # Select language (skip in ISO/chroot builds)
 clear_logo
-if [[ -n ${OMYBUNTU_ISO_BUILD:-} || -n ${OMYBUNTU_CHROOT_INSTALL:-} ]]; then
+if [[ -n ${OMYVOID_ISO_BUILD:-} || -n ${OMYVOID_CHROOT_INSTALL:-} ]]; then
   LANG_VAL="en"
 else
-  echo -e "\n${PADDING_LEFT_SPACES}Choose Omybuntu language / Selecione o idioma / Seleccione el idioma:"
+  echo -e "\n${PADDING_LEFT_SPACES}Choose Omyvoid language / Selecione o idioma / Seleccione el idioma:"
   CHOSEN_LANG=$(gum choose --height 5 "English" "Português (Brasil)" "Español")
 
   case "$CHOSEN_LANG" in
@@ -27,29 +27,16 @@ else
   esac
 fi
 
-mkdir -p "$HOME/.config/omybuntu"
-echo "$LANG_VAL" > "$HOME/.config/omybuntu/language"
-export OMYBUNTU_LANGUAGE="$LANG_VAL"
+mkdir -p "$HOME/.config/omyvoid"
+echo "$LANG_VAL" > "$HOME/.config/omyvoid/language"
+export OMYVOID_LANGUAGE="$LANG_VAL"
 
 # Load translation variables
-source "$OMYBUNTU_PATH/default/i18n/init.sh"
-
-# Determine if we should remove Ubuntu Desktop (GNOME/GDM3)
-mkdir -p "$HOME/.config/omybuntu"
-if [[ -n ${OMYBUNTU_ISO_BUILD:-} || -n ${OMYBUNTU_CHROOT_INSTALL:-} ]]; then
-  # On ISO builds (starts from a clean rootfs), we don't have GNOME to remove
-  echo "false" > "$HOME/.config/omybuntu/remove_ubuntu_desktop"
-else
-  if gum confirm "$I18N_REMOVE_GNOME_PROMPT" --default=false; then
-    echo "true" > "$HOME/.config/omybuntu/remove_ubuntu_desktop"
-  else
-    echo "false" > "$HOME/.config/omybuntu/remove_ubuntu_desktop"
-  fi
-fi
+source "$OMYVOID_PATH/default/i18n/init.sh"
 
 # Install
-source "$OMYBUNTU_INSTALL/preflight/all.sh"
-source "$OMYBUNTU_INSTALL/packaging/all.sh"
-source "$OMYBUNTU_INSTALL/config/all.sh"
-source "$OMYBUNTU_INSTALL/login/all.sh"
-source "$OMYBUNTU_INSTALL/post-install/all.sh"
+source "$OMYVOID_INSTALL/preflight/all.sh"
+source "$OMYVOID_INSTALL/packaging/all.sh"
+source "$OMYVOID_INSTALL/config/all.sh"
+source "$OMYVOID_INSTALL/login/all.sh"
+source "$OMYVOID_INSTALL/post-install/all.sh"

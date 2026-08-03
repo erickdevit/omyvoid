@@ -1,13 +1,13 @@
-_omybuntu_complete() {
+_omyvoid_complete() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
 
-  local omybuntu_path bin_dir
-  omybuntu_path=$(command -v omybuntu 2>/dev/null) || return 0
-  bin_dir=$(dirname -- "$(readlink -f -- "$omybuntu_path" 2>/dev/null || printf '%s' "$omybuntu_path")")
+  local omyvoid_path bin_dir
+  omyvoid_path=$(command -v omyvoid 2>/dev/null) || return 0
+  bin_dir=$(dirname -- "$(readlink -f -- "$omyvoid_path" 2>/dev/null || printf '%s' "$omyvoid_path")")
   [[ -d $bin_dir ]] || return 0
 
-  local prefix="omybuntu"
+  local prefix="omyvoid"
   local i part
   for ((i = 1; i < COMP_CWORD; i++)); do
     part="${COMP_WORDS[i]}"
@@ -42,7 +42,7 @@ _omybuntu_complete() {
 
   if (( ${#candidates[@]} == 0 )) && [[ -x $bin_dir/$prefix ]]; then
     local args enum
-    args=$(grep -m 1 '^# omybuntu:args=<' "$bin_dir/$prefix" 2>/dev/null)
+    args=$(grep -m 1 '^# omyvoid:args=<' "$bin_dir/$prefix" 2>/dev/null)
     enum="${args#*<}"
     enum="${enum%%>*}"
 
@@ -57,8 +57,8 @@ _omybuntu_complete() {
   fi
 }
 
-complete -o default -F _omybuntu_complete omybuntu
+complete -o default -F _omyvoid_complete omyvoid
 
-# Hide individual omybuntu-* binaries from initial-word command completion;
-# the unified `omybuntu` dispatcher is the user-facing entry point.
-complete -I -A command -X 'omybuntu-*'
+# Hide individual omyvoid-* binaries from initial-word command completion;
+# the unified `omyvoid` dispatcher is the user-facing entry point.
+complete -I -A command -X 'omyvoid-*'

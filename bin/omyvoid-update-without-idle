@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# omyvoid:summary=No-op now that omyvoid-update-perform is responsible for idle management.
+# omyvoid:hidden=true

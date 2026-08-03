@@ -5,7 +5,7 @@
 @define-color progress #d9dbdc;
 
 
-/* Cancel out Omybuntu settings */
+/* Cancel out Omyvoid settings */
 window:not(:backdrop),
 window:backdrop {
     border: none;

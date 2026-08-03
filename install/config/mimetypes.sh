@@ -1,4 +1,4 @@
-omybuntu-refresh-applications
+omyvoid-refresh-applications
 update-desktop-database ~/.local/share/applications
 
 # Open directories in file manager

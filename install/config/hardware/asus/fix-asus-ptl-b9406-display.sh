@@ -6,13 +6,6 @@
 # the screen only updates on a full modeset (e.g. a VT switch). The older
 # xe.enable_psr=0 knob does not cover Panel Replay.
 
-if omybuntu-hw-asus-expertbook-b9406; then
-  if [[ -f /etc/default/grub ]]; then
-    current_cmdline=$(sed -nE 's/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"/\1/p' /etc/default/grub)
-    if ! echo "$current_cmdline" | grep -q "xe.enable_panel_replay=0"; then
-      new_cmdline=$(echo "$current_cmdline" | sed 's/ $//')
-      new_cmdline="$new_cmdline xe.enable_panel_replay=0"
-      sudo sed -i -E 's/^(GRUB_CMDLINE_LINUX_DEFAULT=).*/\1"'"$new_cmdline"'"/' /etc/default/grub
-    fi
-  fi
+if omyvoid-hw-asus-expertbook-b9406; then
+  sudo omyvoid-boot-cmdline-add xe.enable_panel_replay=0
 fi

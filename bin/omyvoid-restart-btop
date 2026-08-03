@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# omyvoid:summary=Reload btop configuration (used by the Omyvoid theme switching).
+
+pkill -SIGUSR2 btop

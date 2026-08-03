@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# omyvoid:summary=Print the current Omyvoid git branch
+
+OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
+
+branch=$(git -C "$OMYVOID_PATH" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+if [[ -z $branch && -f $OMYVOID_PATH/.build-info ]]; then
+  branch=$(awk -F= '$1 == "OMYVOID_BUILD_BRANCH" { print $2 }' "$OMYVOID_PATH/.build-info")
+fi
+
+echo "${branch:-unknown}"

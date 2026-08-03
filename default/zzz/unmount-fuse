@@ -1,0 +1,9 @@
+#!/bin/sh
+
+case "$1" in
+  pre)
+    findmnt -rn -t fuse,fuseblk,fuse.portal -o TARGET | sort -r | while read -r target; do
+      umount -l "$target" 2>/dev/null || true
+    done
+    ;;
+esac

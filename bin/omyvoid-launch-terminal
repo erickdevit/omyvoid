@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# omyvoid:summary=Launch a terminal in the active terminal's current directory
+# omyvoid:args=[command...]
+
+exec setsid xdg-terminal-exec --dir="$(omyvoid-cmd-terminal-cwd)" "$@"

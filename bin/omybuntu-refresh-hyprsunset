@@ -1,6 +1,0 @@
-#!/bin/bash
-
-# omybuntu:summary=Overwrite the user config for hyprsunset with the Omybuntu default and restart the service.
-
-omybuntu-refresh-config hypr/hyprsunset.conf
-omybuntu-restart-hyprsunset

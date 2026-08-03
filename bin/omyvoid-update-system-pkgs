@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# omyvoid:summary=Update system packages with XBPS
+# omyvoid:requires-sudo=true
+
+set -e
+
+echo -e "\e[32m\nUpdate system packages\e[0m"
+sudo xbps-install -Suy

@@ -1,5 +1,5 @@
 # CAVA Color Configuration
-# Generated from Omybuntu theme colors
+# Generated from Omyvoid theme colors
 
 [color]
 background = '{{ background }}'

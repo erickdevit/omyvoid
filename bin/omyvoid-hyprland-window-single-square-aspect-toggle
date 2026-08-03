@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# omyvoid:summary=Toggle single-window square aspect ratio.
+
+source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
+
+case $(omyvoid-hyprland-toggle single-window-aspect-ratio) in
+  on) omyvoid-notification-send -g  "$I18N_WIN_ASPECT_ON" ;;
+  off) omyvoid-notification-send -g  "$I18N_WIN_ASPECT_OFF" ;;
+esac
