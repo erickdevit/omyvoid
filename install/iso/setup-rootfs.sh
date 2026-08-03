@@ -26,7 +26,7 @@ cp -a "$workspace/config/." "$rootfs/etc/skel/.config/"
 install -m 0644 "$workspace/default/bashrc" "$rootfs/etc/skel/.bashrc"
 cp -a "$workspace/themes/omyvoid" "$rootfs/etc/skel/.config/omyvoid/current/theme"
 printf 'omyvoid\n' > "$rootfs/etc/skel/.config/omyvoid/current/theme.name"
-ln -snf theme/backgrounds/omyvoidBackground.png "$rootfs/etc/skel/.config/omyvoid/current/background"
+ln -snf theme/backgrounds/omyvoid.png "$rootfs/etc/skel/.config/omyvoid/current/background"
 
 install -m 0644 "$workspace/default/wayland-sessions/omyvoid.desktop" \
   "$rootfs/usr/share/wayland-sessions/omyvoid.desktop"

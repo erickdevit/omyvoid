@@ -20,6 +20,6 @@ Os derivados rasterizados e a fonte de ícones são reconstruídos por
 não aproxima nem redesenha a marca.
 
 Os dois wallpapers selecionáveis do tema Omyvoid são
-`omyvoidBackground.png` e `InRescue.png`. As imagens em
+`omyvoid.png` e `InRescue.png`. As imagens em
 `tools/branding/sources` são as fontes artísticas; a marca exata é aplicada
 localmente durante a geração dos ativos.

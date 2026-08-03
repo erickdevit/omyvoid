@@ -255,13 +255,6 @@ def generate_primary_wallpapers() -> None:
     minimal_icon = source_wallpaper("minimal-osaka-jade.png")
     composite_mark(minimal_icon, size=500, position=(1670, 830), color=OSAKA["accent"], alpha=230, glow=0)
     save_png(minimal_icon, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoid.png")
-    save_png(minimal_icon, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoid-icon.png")
-
-    minimal_text = source_wallpaper("minimal-osaka-jade.png")
-    wordmark = render_wordmark(2200, 520, OSAKA["foreground"])
-    position = ((minimal_text.width - wordmark.width) // 2, (minimal_text.height - wordmark.height) // 2)
-    minimal_text.alpha_composite(wordmark, position)
-    save_png(minimal_text, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoidBackground.png")
 
     rescue = source_wallpaper("rescue-osaka-jade.png")
     composite_mark(

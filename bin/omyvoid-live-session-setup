@@ -16,8 +16,8 @@ export PATH="$OMYVOID_PATH/bin:$PATH:$HOME/.local/bin"
 mkdir -p "$HOME/.config/omyvoid/current" "$HOME/.config"
 
 background="$HOME/.config/omyvoid/current/background"
-if [[ ! -e $background && -f $HOME/.config/omyvoid/current/theme/backgrounds/omyvoidBackground.png ]]; then
-  ln -snf "theme/backgrounds/omyvoidBackground.png" "$background"
+if [[ ! -e $background && -f $HOME/.config/omyvoid/current/theme/backgrounds/omyvoid.png ]]; then
+  ln -snf "theme/backgrounds/omyvoid.png" "$background"
 fi
 
 case " $(cat /proc/cmdline) " in

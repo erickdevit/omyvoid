@@ -5,3 +5,5 @@ ubuntu-base.tar.gz
 installer/target/
 build*.log
 wget-log
+__pycache__/
+*.pyc

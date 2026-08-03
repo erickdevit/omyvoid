@@ -17,34 +17,13 @@ sem uma solicitação explícita do mantenedor.
   herdados do Ubuntu. Eles devem ser preservados e não são uma pendência.
 - Os ativos canônicos já aprovados não devem ser regenerados ou substituídos por
   agentes sem autorização explícita.
+- O wordmark ASCII embutido em `boot.sh` foi atualizado para corresponder ao `logo.txt` canônico (`OMYVOID`).
+- O conjunto de wallpapers do tema Omyvoid foi padronizado em exatamente dois arquivos: `omyvoid.png` (com a marca Osaka Jade) e `InRescue.png`. Arquivos duplicados/redundantes foram removidos e `tools/branding/generate_assets.py` foi alinhado.
+- Os arquivos de bytecode Python (`__pycache__/` e `*.pyc`) foram removidos do controle de versão e adicionados ao `.gitignore`.
 
 ## Pendências reservadas ao mantenedor
 
-### Wordmark do instalador online
-
-`boot.sh` ainda mantém um bloco ASCII embutido que não usa o `logo.txt`
-canônico. O mantenedor decidirá a forma final e fará a substituição.
-
-### Conjunto de wallpapers do tema Omyvoid
-
-O contrato atual do produto e o teste automatizado esperam dois wallpapers no
-tema Omyvoid, mas o diretório contém quatro arquivos:
-
-- `InRescue.png`;
-- `omyvoid-icon.png`;
-- `omyvoid.png`;
-- `omyvoidBackground.png`.
-
-`omyvoid-icon.png` e `omyvoid.png` possuem atualmente o mesmo conteúdo. O
-mantenedor decidirá quais dois ativos permanecerão e alinhará o gerador, a
-documentação e os testes com essa decisão.
-
-### Higiene do gerador
-
-O bytecode `tools/branding/__pycache__/generate_assets.cpython-312.pyc` está
-rastreado pelo Git, e `.gitignore` ainda não ignora caches Python. A limpeza será
-feita junto da próxima rodada de branding para evitar misturar uma alteração de
-identidade com o trabalho de infraestrutura da ISO.
+Nenhuma pendência aberta no momento. Todas as pendências de branding registradas foram concluídas.
 
 ## Verificação ao concluir
 
