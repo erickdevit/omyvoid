@@ -8,8 +8,17 @@
 set -euo pipefail
 (( EUID == 0 )) || exec sudo "$0" "$@"
 
-source /etc/default/limine
-ESP_PATH=${ESP_PATH:-/boot}
+[[ -f /etc/default/limine ]] && source /etc/default/limine
+if [[ -z ${ESP_PATH:-} ]]; then
+  if [[ $(findmnt -n -o FSTYPE /boot 2>/dev/null || true) == "vfat" ]]; then
+    ESP_PATH="/boot"
+  elif [[ $(findmnt -n -o FSTYPE /boot/efi 2>/dev/null || true) == "vfat" ]]; then
+    ESP_PATH="/boot/efi"
+  else
+    ESP_PATH="/boot"
+  fi
+fi
+
 limine_efi=/usr/share/limine/BOOTX64.EFI
 [[ -f $limine_efi ]] || { echo "Limine EFI binary not found: $limine_efi" >&2; exit 1; }
 
@@ -17,6 +26,7 @@ mkdir -p "$ESP_PATH/EFI/Omyvoid" "$ESP_PATH/EFI/BOOT"
 install -m 0644 "$limine_efi" "$ESP_PATH/EFI/Omyvoid/limine.efi"
 install -m 0644 "$limine_efi" "$ESP_PATH/EFI/BOOT/BOOTX64.EFI"
 rm -f "$ESP_PATH/EFI/Omyvoid/limine.conf" "$ESP_PATH/EFI/BOOT/limine.conf"
+rm -rf "$ESP_PATH/EFI/void_grub" "$ESP_PATH/EFI/grub" "$ESP_PATH/EFI/Void" 2>/dev/null || true
 
 boot_source=$(findmnt -n -o SOURCE "$ESP_PATH")
 disk="/dev/$(lsblk -n -o PKNAME "$boot_source" | head -n 1)"
@@ -27,7 +37,7 @@ if [[ -n $disk && -n $part && -d /sys/firmware/efi ]]; then
     number=${number%%[[:space:]]*}
     number=${number%\*}
     efibootmgr --bootnum "$number" --delete-bootnum || true
-  done < <(efibootmgr | grep -E '^Boot[0-9A-Fa-f]+\*?[[:space:]]+Omyvoid([[:space:]]|$)' || true)
+  done < <(efibootmgr 2>/dev/null | grep -Ei '^Boot[0-9A-Fa-f]+\*?[[:space:]]+(Omyvoid|void_grub|grub|Void)([[:space:]]|$)' || true)
   efibootmgr --create --disk "$disk" --part "$part" --label Omyvoid --loader '\EFI\Omyvoid\limine.efi'
 fi
 

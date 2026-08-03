@@ -38,7 +38,13 @@ if [[ -n $existing_entry ]]; then
 
   exit 0
 else
-  uki_file=$(find /boot/EFI/Linux/ -name "omyvoid*.efi" -printf "%f\n" 2>/dev/null | head -1)
+  source /etc/default/limine 2>/dev/null || true
+  esp_path=${ESP_PATH:-/boot}
+  if [[ ! -d $esp_path/EFI/Linux && -d /boot/efi/EFI/Linux ]]; then
+    esp_path="/boot/efi"
+  fi
+
+  uki_file=$(find "$esp_path/EFI/Linux/" -name "omyvoid*.efi" -printf "%f\n" 2>/dev/null | head -1)
 
   if [[ -z $uki_file ]]; then
     echo "$I18N_DIRECT_BOOT_ERR_NO_UKI" >&2
@@ -46,13 +52,13 @@ else
   fi
 
   if omyvoid-cmd-present mokutil && mokutil --sb-state 2>/dev/null | grep -qi "SecureBoot enabled"; then
-    if omyvoid-cmd-missing sbverify || ! sbverify --list "/boot/EFI/Linux/$uki_file" >/dev/null 2>&1; then
+    if omyvoid-cmd-missing sbverify || ! sbverify --list "$esp_path/EFI/Linux/$uki_file" >/dev/null 2>&1; then
       echo "$I18N_DIRECT_BOOT_ERR_UNSIGNED_UKI" >&2
       exit 1
     fi
   fi
 
-  boot_source=$(findmnt -n -o SOURCE /boot)
+  boot_source=$(findmnt -n -o SOURCE "$esp_path")
   disk=$(echo "$boot_source" | sed 's/p\?[0-9]*$//')
   part=$(echo "$boot_source" | grep -o 'p\?[0-9]*$' | sed 's/^p//')
 

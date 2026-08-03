@@ -4,17 +4,26 @@ set -euo pipefail
 
 [[ -f /etc/default/limine ]] && source /etc/default/limine
 
-boot_fstype=$(findmnt -n -o FSTYPE /boot)
-[[ $boot_fstype == vfat ]] || {
-  echo "Omyvoid requires a FAT32 filesystem mounted at /boot" >&2
+esp_path="/boot"
+if [[ $(findmnt -n -o FSTYPE /boot 2>/dev/null || true) == "vfat" ]]; then
+  esp_path="/boot"
+elif [[ $(findmnt -n -o FSTYPE /boot/efi 2>/dev/null || true) == "vfat" ]]; then
+  esp_path="/boot/efi"
+else
+  echo "Omyvoid requires a FAT32 filesystem mounted at /boot or /boot/efi" >&2
   exit 1
-}
+fi
 
 root_fstype=$(findmnt -n -o FSTYPE /)
 [[ $root_fstype == btrfs ]] || {
   echo "Omyvoid requires a Btrfs root filesystem" >&2
   exit 1
 }
+
+if command -v xbps-query >/dev/null 2>&1 && xbps-query -s grub-x86_64-efi >/dev/null 2>&1; then
+  sudo xbps-remove -Oy grub-x86_64-efi grub 2>/dev/null || true
+fi
+sudo rm -rf "$esp_path/EFI/void_grub" "$esp_path/EFI/grub" "$esp_path/EFI/Void" /boot/grub /etc/default/grub /etc/grub.d 2>/dev/null || true
 
 root_source=$(findmnt -n -o SOURCE /)
 root_uuid=$(findmnt -n -o UUID /)
@@ -43,10 +52,10 @@ fi
 sudo install -d -m 0755 /etc/default /etc/dracut.conf.d \
   /usr/lib/dracut/modules.d/95omyvoid-snapshot-overlay \
   /etc/kernel.d/post-install /etc/kernel.d/post-remove \
-  /boot/EFI/Omyvoid
+  "$esp_path/EFI/Omyvoid"
 
 sudo tee /etc/default/limine >/dev/null <<EOF
-ESP_PATH="/boot"
+ESP_PATH="$esp_path"
 OMYVOID_ROOT_SUBVOLUME="@"
 OMYVOID_ROOT_UUID="$root_uuid"
 OMYVOID_LUKS_UUID="$luks_uuid"
@@ -68,6 +77,6 @@ sudo install -m 0755 "$OMYVOID_PATH/default/kernel.d/60-omyvoid-limine" \
 sudo install -m 0755 "$OMYVOID_PATH/default/kernel.d/60-omyvoid-limine" \
   /etc/kernel.d/post-remove/60-omyvoid-limine
 sudo install -m 0644 "$OMYVOID_PATH/default/limine/omyvoid-boot.png" \
-  /boot/EFI/Omyvoid/omyvoid-boot.png
+  "$esp_path/EFI/Omyvoid/omyvoid-boot.png"
 
 sudo omyvoid-boot-repair

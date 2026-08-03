@@ -1,5 +1,5 @@
 # Omyvoid v1 supports only Void Linux x86_64-glibc in UEFI mode.
-if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID=void$' /etc/os-release; then
+if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID="?void"?$' /etc/os-release; then
   printf '\e[31mOmyvoid requires Void Linux.\e[0m\n' >&2
   exit 1
 fi
@@ -25,12 +25,15 @@ done
 if [[ -z ${OMYVOID_ISO_BUILD:-} && -z ${OMYVOID_CHROOT_INSTALL:-} ]]; then
   root_fs=$(findmnt -n -o FSTYPE /)
   boot_fs=$(findmnt -n -o FSTYPE /boot 2>/dev/null || true)
+  if [[ $boot_fs != "vfat" ]]; then
+    boot_fs=$(findmnt -n -o FSTYPE /boot/efi 2>/dev/null || true)
+  fi
   if [[ $root_fs != "btrfs" ]]; then
     printf '\e[31mOmyvoid requires Btrfs for /.\e[0m\n' >&2
     exit 1
   fi
   if [[ $boot_fs != "vfat" ]]; then
-    printf '\e[31mOmyvoid requires a FAT32 partition mounted at /boot.\e[0m\n' >&2
+    printf '\e[31mOmyvoid requires a FAT32 partition mounted at /boot or /boot/efi.\e[0m\n' >&2
     exit 1
   fi
 fi
