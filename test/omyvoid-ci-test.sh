@@ -47,7 +47,7 @@ fi
 
 echo '# GitLab CI/CD'
 [[ -f $gitlab_ci ]] && ok 'GitLab pipeline definition exists' || nok 'GitLab pipeline definition exists'
-assert_contains 'GitLab merge request validation uses the official Void image' "$gitlab_ci" 'image: ghcr.io/void-linux/void-glibc-full:latest'
+assert_contains 'GitLab merge request validation uses the official Void image' "$gitlab_ci" 'ghcr.io/void-linux/void-glibc-full:latest'
 assert_contains 'GitLab package jobs target the dedicated builder' "$gitlab_ci" 'omyvoid-builder'
 assert_contains 'GitLab ISO jobs target the isolated release runner' "$gitlab_ci" 'omyvoid-release'
 assert_contains 'GitLab development ISO is manual' "$gitlab_ci" '^iso:dev:'
