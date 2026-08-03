@@ -97,23 +97,31 @@ O contrato da CLI foi alinhado: `omyvoid install` abre o instalador do sistema e
 `omyvoid install <subcomando>` continua instalando software opcional. A skill do
 projeto documenta as duas formas.
 
-No host atual, o teste estrutural da ISO passou integralmente. O teste da CLI
-passou por todos os contratos até a etapa Python; a continuação não é executável
-de forma confiável pelo Python Windows contra scripts MSYS. A suíte completa,
-`shellcheck`, `xlint`, Rust e o build XBPS permanecem como validação obrigatória
-do job de validação no container Void.
+No host atual, ShellCheck e a suíte Rust puderam ser executados com toolchains
+portáteis. O teste da CLI passou por todos os contratos até a etapa Python; a
+continuação não é executável de forma confiável pelo Python Windows contra
+scripts MSYS. O build XBPS real continua dependendo de Void Linux.
 
 ## Resultados da auditoria automatizada
 
 - Sintaxe dos scripts Bash alterados: aprovada.
 - Workflows GitHub aprovados pelo `actionlint` 1.7.12 e todos os YAMLs aprovados
   por parser independente.
+- `.gitlab-ci.yml` aprovado por JSON Schema e validação da cadeia `needs` em
+  cenários de branch `dev` e tag de release.
 - `omyvoid commands --check`: aprovado para 313 comandos.
-- `test/omyvoid-iso-test.sh`: aprovado integralmente.
+- ShellCheck 0.11.0: aprovado para 441 scripts.
+- Rust 1.97.1: `cargo fmt`, Clippy sem warnings e 11 testes aprovados.
+- Os quatro templates passaram por todas as regras funcionais do `xlint`; o
+  wrapper do projeto ignora exclusivamente a exigência upstream de tabs, que
+  conflita com a regra de dois espaços do `AGENTS.md`.
+- `test/omyvoid-iso-test.sh`: contratos de plataforma, armazenamento, Limine,
+  snapshots, ISO e XBPS aprovados; a execução para na contagem de wallpapers
+  devido à pendência reservada ao mantenedor em `BRANDING_PENDING.md`.
 - Contratos estáticos de GitHub/GitLab CI/CD: implementados.
 - Teste da CLI: aprovado até a etapa que exige interoperabilidade Python/MSYS.
-- `shellcheck`, `xlint`, Rust, build real dos pacotes e build da ISO: pendentes
-  no runner Void.
+- Build real dos pacotes e build da ISO: pendentes no runner Void; a ISO será
+  construída exclusivamente pelo mantenedor.
 
 Os testes de Limine, snapshots, recovery e estrutura ISO existentes são
 majoritariamente estáticos. Eles comprovam a presença da implementação, mas não
