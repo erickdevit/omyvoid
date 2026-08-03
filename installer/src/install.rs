@@ -472,8 +472,7 @@ fn repository_list(offline: bool) -> Result<Vec<String>, String> {
         format!("{MAIN_REPOSITORY}/multilib"),
         format!("{MAIN_REPOSITORY}/multilib/nonfree"),
         BLACKHOLE_REPOSITORY.to_string(),
-        std::env::var("OMYVOID_XBPS_REPOSITORY")
-            .unwrap_or_else(|_| OMYVOID_REPOSITORY.to_string()),
+        std::env::var("OMYVOID_XBPS_REPOSITORY").unwrap_or_else(|_| OMYVOID_REPOSITORY.to_string()),
     ])
 }
 
