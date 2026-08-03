@@ -19,14 +19,14 @@ validate:
   stage: validate
   image:
     name: ghcr.io/void-linux/void-glibc-full:latest
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/bin/sh", "-c", "xbps-install -Sy bash ca-certificates && exec /usr/bin/bash \"$@\"", "bash"]
   timeout: 45m
   before_script:
     - xbps-install -Syu xbps
-    - xbps-install -Sy bash ca-certificates git
-    - /usr/bin/bash release/ci-prepare-void.sh test
+    - xbps-install -Sy git
+    - release/ci-prepare-void.sh test
   script:
-    - /usr/bin/bash test/ci.sh
+    - test/ci.sh
 
 packages:
   stage: packages
