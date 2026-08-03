@@ -6,7 +6,7 @@ iso=${1:?Usage: publish-r2.sh IMAGE.iso REPOSITORY_DIR}
 repository=${2:?Usage: publish-r2.sh IMAGE.iso REPOSITORY_DIR}
 version=${OMYVOID_RELEASE_VERSION:-$(basename "$iso" | sed -E 's/^omyvoid-(.*)-x86_64\.iso$/\1/')}
 
-for variable in R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ACCOUNT_ID R2_BUCKET OMYVOID_R2_PUBLIC_URL OMYVOID_MINISIGN_PUBLIC_KEY_FILE; do
+for variable in R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ACCOUNT_ID R2_BUCKET OMYVOID_R2_PUBLIC_URL OMYVOID_XBPS_PUBLIC_URL OMYVOID_MINISIGN_PUBLIC_KEY_FILE; do
   [[ -n ${!variable:-} ]] || { echo "Missing release variable: $variable" >&2; exit 1; }
 done
 for tool in curl minisign rclone sha256sum; do
@@ -31,14 +31,17 @@ release_prefix="r2:$R2_BUCKET/releases/$version"
 rclone copyto "$iso" "$release_prefix/$(basename "$iso")"
 rclone copyto "$iso.sha256" "$release_prefix/$(basename "$iso.sha256")"
 rclone copyto "$iso.minisig" "$release_prefix/$(basename "$iso.minisig")"
-rclone sync "$repository" "r2:$R2_BUCKET/repository/current"
+rclone sync "$repository" "r2:$R2_BUCKET/current"
 
 verification_dir=$(mktemp -d)
 trap 'rm -rf "$verification_dir"' EXIT
 public_release="${OMYVOID_R2_PUBLIC_URL%/}/releases/$version"
+public_repository="${OMYVOID_XBPS_PUBLIC_URL%/}"
 for artifact in "$(basename "$iso")" "$(basename "$iso.sha256")" "$(basename "$iso.minisig")"; do
   curl --fail --location --retry 5 --output "$verification_dir/$artifact" "$public_release/$artifact"
 done
+curl --fail --location --retry 5 --output "$verification_dir/x86_64-repodata" \
+  "$public_repository/x86_64-repodata"
 
 (
   cd "$verification_dir"

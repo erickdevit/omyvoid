@@ -59,7 +59,14 @@ jobs:
       - name: Inspect repository
         run: |
           test -f build/repository/x86_64-repodata
-          xbps-query --repository="$PWD/build/repository" -Rs '^omyvoid-|^ukify$'
+          test "$(find build/repository -maxdepth 1 -type f -name '*.xbps' | wc -l)" -eq 4
+          for package in \
+            elephant \
+            omyvoid-dracut-snapshot \
+            omyvoid-limine-entry-tool \
+            omyvoid-limine-snapper-sync; do
+            xbps-query --repository="$PWD/build/repository" "$package"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: omyvoid-xbps-${{ github.sha }}

@@ -6,6 +6,12 @@ workspace=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 build_root=${OMYVOID_XBPS_BUILD_DIR:-$workspace/build/xbps}
 output=${1:-$workspace/build/repository}
 void_packages="$build_root/void-packages"
+repo_packages=(
+  elephant
+  omyvoid-dracut-snapshot
+  omyvoid-limine-entry-tool
+  omyvoid-limine-snapper-sync
+)
 
 case "$build_root" in
   "$workspace"/build/*) ;;
@@ -32,7 +38,7 @@ else
   git clone --depth=1 https://github.com/void-linux/void-packages.git "$void_packages"
 fi
 
-for package in omyvoid-limine-entry-tool omyvoid-limine-snapper-sync omyvoid-dracut-snapshot; do
+for package in "${repo_packages[@]}"; do
   package_dir="$void_packages/srcpkgs/$package"
   rm -rf "$package_dir"
   mkdir -p "$package_dir"
@@ -58,13 +64,24 @@ cp "$workspace/default/dracut/95omyvoid-snapshot-overlay/"* "$dracut_files/"
 
 pushd "$void_packages" >/dev/null
 ./xbps-src binary-bootstrap
-for package in omyvoid-limine-entry-tool omyvoid-limine-snapper-sync omyvoid-dracut-snapshot; do
+for package in "${repo_packages[@]}"; do
+  find hostdir/binpkgs -maxdepth 1 -type f -name "${package}-*.xbps" -delete
   ./xbps-src pkg "$package"
 done
 popd >/dev/null
 
 find "$output" -maxdepth 1 -type f -name '*.xbps' -delete
-cp "$void_packages/hostdir/binpkgs/"*.xbps "$output/"
+find "$output" -maxdepth 1 -type f -name '*-repodata*' -delete
+shopt -s nullglob
+for package in "${repo_packages[@]}"; do
+  artifacts=("$void_packages/hostdir/binpkgs/${package}-"*.xbps)
+  (( ${#artifacts[@]} > 0 )) || {
+    echo "No XBPS artifact was produced for $package" >&2
+    exit 1
+  }
+  cp "${artifacts[@]}" "$output/"
+done
+shopt -u nullglob
 xbps-rindex -a "$output/"*.xbps
 
 if [[ -n ${OMYVOID_XBPS_SIGNING_KEY:-} ]]; then

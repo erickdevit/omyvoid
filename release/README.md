@@ -11,7 +11,9 @@ O runner self-hosted deve usar Void Linux `x86_64-glibc` e possuir os rótulos `
 - `OMYVOID_MINISIGN_SECRET_KEY`: conteúdo da chave secreta Minisign.
 - `OMYVOID_MINISIGN_PUBLIC_KEY`: chave pública Minisign.
 - `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID` e `R2_BUCKET`.
-- variável de repositório `OMYVOID_R2_PUBLIC_URL` para a origem pública de download.
+- variável `OMYVOID_R2_PUBLIC_URL` para a origem pública de downloads.
+- variável `OMYVOID_XBPS_PUBLIC_URL` para o índice público XBPS, normalmente
+  `https://packages.omyvoid.org/current`.
 
 ## Fluxo
 
@@ -21,4 +23,6 @@ O runner self-hosted deve usar Void Linux `x86_64-glibc` e possuir os rótulos `
 4. Crie uma tag `vX.Y.Z-rc.N` a partir da branch `rc` para um candidato.
 5. Quando o mantenedor decidir promover, avance `main` para o mesmo commit e crie a tag assinada `vX.Y.Z`.
 
-O workflow recusa tags incompatíveis com o conteúdo do arquivo `version`. Depois do upload, baixa a ISO, checksum e assinatura pela URL pública do R2 e verifica tudo novamente antes de criar a GitHub Release.
+O workflow recusa tags incompatíveis com o conteúdo do arquivo `version`. Depois
+do upload, baixa a ISO, checksum, assinatura e índice XBPS pelas URLs públicas do
+R2 e verifica os artefatos antes de criar a GitHub Release.

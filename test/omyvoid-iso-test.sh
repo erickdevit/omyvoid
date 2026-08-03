@@ -113,6 +113,7 @@ assert_file_contains 'ISO is based on void-mklive' "$ROOT/install/iso/build-iso.
 assert_file_contains 'ISO final image is authored with xorriso' "$ROOT/install/iso/build-iso.sh" '^xorriso -as mkisofs'
 assert_file_contains 'ISO uses a UEFI El Torito image' "$ROOT/install/iso/build-iso.sh" '-eltorito-alt-boot -e boot/limine-uefi\.img'
 assert_file_contains 'ISO embeds the offline repository' "$ROOT/install/iso/build-iso.sh" 'image_dir/repository'
+assert_file_contains 'remote Omyvoid repository is optional during ISO bootstrap' "$ROOT/install/iso/build-iso.sh" 'if \[\[ -n \$\{OMYVOID_XBPS_REPOSITORY:-\} \]\]'
 if rg -n -- '-b |eltorito-boot|legacy-bios|bios-cd' "$ROOT/install/iso/build-iso.sh"; then
   nok 'first ISO series does not configure Legacy BIOS boot'
 else
@@ -120,8 +121,36 @@ else
 fi
 
 echo '# XBPS repository templates'
-for package in omyvoid-limine-entry-tool omyvoid-limine-snapper-sync omyvoid-dracut-snapshot; do
+for package in elephant omyvoid-limine-entry-tool omyvoid-limine-snapper-sync omyvoid-dracut-snapshot; do
   [[ -f $ROOT/xbps-src/srcpkgs/$package/template ]] && ok "XBPS template exists: $package" || nok "XBPS template exists: $package"
+  grep -Fq "$package" "$ROOT/release/build-xbps-repo.sh" && ok "XBPS repository builds: $package" || nok "XBPS repository builds: $package"
+done
+assert_file_contains 'Walker launches the packaged Elephant binary from PATH' "$ROOT/bin/omyvoid-launch-walker" 'setsid elephant'
+
+echo '# Supported optional applications'
+assert_file_contains 'Chromium is offered by the browser installer' "$ROOT/bin/omyvoid-install-browser" 'chromium\|firefox'
+assert_file_contains 'Chromium is the default HTTP browser' "$ROOT/install/config/mimetypes.sh" 'default-web-browser chromium\.desktop'
+assert_file_contains 'Google account support is conditional in the service menu' "$ROOT/bin/omyvoid-menu" "! grep -q -- '--oauth2-client-id'"
+assert_file_contains 'Google account credentials survive Chromium refreshes' "$ROOT/bin/omyvoid-refresh-chromium" 'omyvoid-install-chromium-google-account'
+if rg -n 'chrome|brave|brave-origin|edge|zen' "$ROOT/bin/omyvoid-install-browser"; then
+  nok 'browser installer exposes only Chromium and Firefox'
+else
+  ok 'browser installer exposes only Chromium and Firefox'
+fi
+
+unsupported_installers=(
+  omyvoid-install-ai-ollama
+  omyvoid-install-editor-cursor
+  omyvoid-install-gaming-heroic
+  omyvoid-install-gaming-minecraft
+  omyvoid-install-gaming-moonlight
+  omyvoid-install-nordvpn
+  omyvoid-install-once
+  omyvoid-install-service-sunshine
+  omyvoid-install-zed
+)
+for command in "${unsupported_installers[@]}"; do
+  [[ ! -e $ROOT/bin/$command ]] && ok "unsupported installer removed: $command" || nok "unsupported installer removed: $command"
 done
 
 (( failures == 0 )) || exit 1

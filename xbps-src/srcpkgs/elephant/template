@@ -1,0 +1,45 @@
+# Template file for 'elephant'
+pkgname=elephant
+version=2.22.0
+revision=1
+archs="x86_64"
+hostmakedepends="go"
+short_desc="Plugin-based data provider service for Walker"
+maintainer="Erick Dev <erickdevit@users.noreply.github.com>"
+license="GPL-3.0-only"
+homepage="https://github.com/abenz1267/elephant"
+distfiles="https://github.com/abenz1267/elephant/archive/refs/tags/v${version}.tar.gz"
+checksum=c6caa61727e4b5c3981099943b4b616c338a6e1b4e33b5e1d32078b8e4dbe120
+
+do_build() {
+  local provider
+  local providers=(
+    calc
+    clipboard
+    desktopapplications
+    files
+    menus
+    providerlist
+    symbols
+    websearch
+  )
+
+  export CGO_ENABLED=1
+  go build -buildvcs=false -trimpath -o elephant ./cmd/elephant
+
+  for provider in "${providers[@]}"; do
+    go build -buildvcs=false -buildmode=plugin -trimpath \
+      -o "${provider}.so" "./internal/providers/${provider}"
+  done
+}
+
+do_install() {
+  local provider
+
+  vbin elephant
+  vlicense LICENSE
+
+  for provider in *.so; do
+    vinstall "$provider" 0755 etc/xdg/elephant/providers
+  done
+}

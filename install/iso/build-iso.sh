@@ -10,6 +10,16 @@ stage_iso="$build_dir/void-stage.iso"
 image_dir="$build_dir/image"
 repository_dir="$build_dir/repository"
 efi_image="$image_dir/boot/limine-uefi.img"
+repository_args=(
+  -r https://repo-default.voidlinux.org/current/nonfree
+  -r https://repo-default.voidlinux.org/current/multilib
+  -r https://repo-default.voidlinux.org/current/multilib/nonfree
+  -r https://mirror.black-hole.dev/x86_64
+  -r "$repository_dir"
+)
+if [[ -n ${OMYVOID_XBPS_REPOSITORY:-} ]]; then
+  repository_args+=(-r "$OMYVOID_XBPS_REPOSITORY")
+fi
 export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git -C "$workspace" show -s --format=%ct HEAD 2>/dev/null || date +%s)}
 
 case "$build_dir" in
@@ -56,12 +66,7 @@ pushd "$void_mklive" >/dev/null
   -T Omyvoid \
   -o "$stage_iso" \
   -c "$build_dir/xbps-cache" \
-  -r https://repo-default.voidlinux.org/current/nonfree \
-  -r https://repo-default.voidlinux.org/current/multilib \
-  -r https://repo-default.voidlinux.org/current/multilib/nonfree \
-  -r https://mirror.black-hole.dev/x86_64 \
-  -r "$repository_dir" \
-  -r "${OMYVOID_XBPS_REPOSITORY:-https://packages.omyvoid.org/current}" \
+  "${repository_args[@]}" \
   -p "${packages[*]}" \
   -S "dbus elogind seatd NetworkManager sddm socklog-unix nanoklogd" \
   -C "live.autologin live.user=omyvoid live.shell=/bin/bash" \

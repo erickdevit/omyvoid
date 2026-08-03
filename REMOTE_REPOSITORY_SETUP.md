@@ -134,16 +134,34 @@ O repositório complementar deve conter inicialmente:
 - `omyvoid-limine-entry-tool`;
 - `omyvoid-limine-snapper-sync`;
 - `omyvoid-dracut-snapshot`;
-- `elephant`, se a dependência for confirmada.
+- `elephant` 2.22.0, incluindo os oito providers usados pelo Walker.
+
+Essa lista é fechada para a primeira ISO: são quatro pacotes. Os templates
+ficam no próprio repositório Git do Omyvoid em `xbps-src/srcpkgs`; os arquivos
+`.xbps` e `x86_64-repodata` produzidos são o repositório binário publicado no R2.
+Não é necessário criar um segundo repositório Git.
 
 Antes da publicação remota:
 
-1. adicionar e validar o template do Elephant;
-2. executar `xlint` em todos os templates;
-3. construir os pacotes com `release/build-xbps-repo.sh`;
-4. inspecionar `x86_64-repodata` e consultar cada pacote com `xbps-query`;
-5. definir a política de chave RSA do XBPS;
-6. assinar o índice e os pacotes somente na etapa de release.
+1. executar `xlint` em todos os templates;
+2. construir os pacotes com `release/build-xbps-repo.sh`;
+3. inspecionar `x86_64-repodata` e consultar cada pacote com `xbps-query`;
+4. definir a política de chave RSA do XBPS;
+5. assinar o índice e os pacotes somente na etapa de release.
+
+Valide localmente no Void:
+
+```bash
+release/build-xbps-repo.sh build/repository
+
+for package in \
+  elephant \
+  omyvoid-dracut-snapshot \
+  omyvoid-limine-entry-tool \
+  omyvoid-limine-snapper-sync; do
+  xbps-query --repository="$PWD/build/repository" "$package"
+done
+```
 
 Uma chave privada protegida por senha exige que o workflow consiga fornecer a
 senha ao `xbps-rindex` sem prompt. O fluxo atual ainda não implementa essa
@@ -155,7 +173,7 @@ release poderá ficar bloqueada esperando interação.
 Crie um bucket exclusivo e preserve a estrutura esperada pelo projeto:
 
 ```text
-repository/current/
+current/
 releases/<versao>/
 ```
 
@@ -166,9 +184,11 @@ configuração atual espera:
 https://packages.omyvoid.org/current
 ```
 
-Configure o domínio público do R2 de modo que essa URL contenha diretamente
-`x86_64-repodata` e os arquivos `.xbps`, ou altere o código para usar a URL real
-definida para o bucket.
+Configure `packages.omyvoid.org` como domínio público do bucket. O publisher
+sincroniza o índice e os pacotes em `current/`, de modo que
+`https://packages.omyvoid.org/current` contenha diretamente
+`x86_64-repodata` e os arquivos `.xbps`. O domínio de downloads pode apontar
+para o mesmo bucket e servir os artefatos em `releases/<versao>/`.
 
 Crie uma credencial R2 limitada ao bucket Omyvoid, com permissão apenas para
 listar, gravar, substituir e ler os objetos necessários à publicação e
@@ -193,6 +213,7 @@ A variable pública é:
 
 ```text
 OMYVOID_R2_PUBLIC_URL
+OMYVOID_XBPS_PUBLIC_URL
 ```
 
 Cadastre valores pelo GitHub CLI sem colocá-los no histórico ou na linha de
@@ -209,6 +230,7 @@ gh secret set R2_ACCOUNT_ID
 gh secret set R2_BUCKET
 
 gh variable set OMYVOID_R2_PUBLIC_URL --body 'https://downloads.omyvoid.org'
+gh variable set OMYVOID_XBPS_PUBLIC_URL --body 'https://packages.omyvoid.org/current'
 ```
 
 Cadastre `OMYVOID_XBPS_PASSPHRASE` somente depois de implementar o consumo não

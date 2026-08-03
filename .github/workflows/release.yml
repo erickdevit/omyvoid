@@ -18,6 +18,7 @@ jobs:
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       OMYVOID_R2_PUBLIC_URL: ${{ vars.OMYVOID_R2_PUBLIC_URL }}
+      OMYVOID_XBPS_PUBLIC_URL: ${{ vars.OMYVOID_XBPS_PUBLIC_URL }}
       XBPS_PASSPHRASE: ${{ secrets.OMYVOID_XBPS_PASSPHRASE }}
     steps:
       - uses: actions/checkout@v4
