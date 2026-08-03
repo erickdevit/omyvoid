@@ -19,7 +19,7 @@ Os derivados rasterizados e a fonte de ícones são reconstruídos por
 `tools/branding/generate_assets.py`. O script lê o caminho do SVG canônico e
 não aproxima nem redesenha a marca.
 
-Os dois wallpapers selecionáveis do tema Omyvoid são
-`omyvoid.png` e `InRescue.png`. As imagens em
+Os quatro wallpapers selecionáveis do tema Omyvoid são
+`omyvoid.png`, `InRescue.png`, `omyvoid - icon.png` e `omyvoid-text.png`. As imagens em
 `tools/branding/sources` são as fontes artísticas; a marca exata é aplicada
 localmente durante a geração dos ativos.

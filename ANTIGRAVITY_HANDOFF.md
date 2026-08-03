@@ -39,10 +39,8 @@ gerada nenhuma ISO.
 
 4. Cadastrar um segundo host Void isolado com o label `omyvoid-release`. Não
    usar esse runner para pull requests.
-5. Resolver o conjunto final de wallpapers. Atualmente existem quatro arquivos
-   em `themes/omyvoid/backgrounds/`, mas o contrato anterior exige exatamente
-   dois. Esta decisão é exclusiva do mantenedor; consultar
-   `BRANDING_PENDING.md` e alinhar também `tools/branding/generate_assets.py`.
+5. O contrato de wallpapers foi atualizado para aceitar e disponibilizar os quatro
+   arquivos existentes em `themes/omyvoid/backgrounds/`.
 6. Rodar `test/ci.sh` em Void após a decisão dos wallpapers.
 7. Gerar e inspecionar a ISO manualmente. Esta etapa permanece com o mantenedor:
 

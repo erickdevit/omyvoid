@@ -102,7 +102,7 @@ assert_file_contains 'audio user service includes PipeWire' "$ROOT/install/confi
 assert_file_contains 'SDDM launches Hyprland directly' "$ROOT/install/login/sddm.sh" 'CompositorCommand=Hyprland --config'
 
 wallpaper_count=$(find "$ROOT/themes/omyvoid/backgrounds" -maxdepth 1 -type f | wc -l)
-(( wallpaper_count == 2 )) && ok 'desktop exposes exactly two Omyvoid wallpapers' || nok 'desktop exposes exactly two Omyvoid wallpapers'
+(( wallpaper_count == 4 )) && ok 'desktop exposes four Omyvoid wallpapers' || nok 'desktop exposes four Omyvoid wallpapers'
 [[ -f $ROOT/default/limine/omyvoid-boot.png ]] && ok 'separate optimized boot wallpaper exists' || nok 'separate optimized boot wallpaper exists'
 
 echo '# ISO definition'

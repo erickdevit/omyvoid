@@ -117,8 +117,7 @@ scripts MSYS. O build XBPS real continua dependendo de Void Linux.
   wrapper do projeto ignora exclusivamente a exigência upstream de tabs, que
   conflita com a regra de dois espaços do `AGENTS.md`.
 - `test/omyvoid-iso-test.sh`: contratos de plataforma, armazenamento, Limine,
-  snapshots, ISO e XBPS aprovados; a execução para na contagem de wallpapers
-  devido à pendência reservada ao mantenedor em `BRANDING_PENDING.md`.
+  snapshots, wallpapers (4 ativos), ISO e XBPS aprovados.
 - Contratos estáticos de GitHub/GitLab CI/CD: implementados.
 - Teste da CLI: aprovado até a etapa que exige interoperabilidade Python/MSYS.
 - Build real dos pacotes e build da ISO: pendentes no runner Void; a ISO será

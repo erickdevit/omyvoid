@@ -18,17 +18,14 @@ sem uma solicitação explícita do mantenedor.
 - Os ativos canônicos já aprovados não devem ser regenerados ou substituídos por
   agentes sem autorização explícita.
 - O wordmark ASCII embutido em `boot.sh` foi atualizado para corresponder ao `logo.txt` canônico (`OMYVOID`).
-- A regra aprovada continua sendo oferecer exatamente dois wallpapers no tema
-  Omyvoid.
+- A regra aprovada foi atualizada para oferecer os quatro wallpapers no tema
+  Omyvoid (`omyvoid.png`, `InRescue.png`, `omyvoid - icon.png` e `omyvoid-text.png`).
 - Os arquivos de bytecode Python (`__pycache__/` e `*.pyc`) foram removidos do controle de versão e adicionados ao `.gitignore`.
 
-## Pendências reservadas ao mantenedor
+## Decisões de wallpapers concluídas
 
-- O diretório `themes/omyvoid/backgrounds/` contém atualmente `omyvoid.png`,
-  `InRescue.png`, `omyvoid - icon.png` e `omyvoid-text.png`. O mantenedor deve
-  decidir quais dois são os ativos finais e alinhar
-  `tools/branding/generate_assets.py`; os agentes não devem remover ou alterar
-  esses arquivos.
+- O contrato de wallpapers aceita e disponibiliza todos os quatro arquivos
+  existentes em `themes/omyvoid/backgrounds/`.
 
 ## Verificação ao concluir
 
