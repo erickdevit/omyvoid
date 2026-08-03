@@ -1,7 +1,7 @@
 # Omyvoid Plymouth Theme Script
 
-Window.SetBackgroundTopColor(0.078, 0.039, 0.020);
-Window.SetBackgroundBottomColor(0.078, 0.039, 0.020);
+Window.SetBackgroundTopColor(0.067, 0.110, 0.094);
+Window.SetBackgroundBottomColor(0.035, 0.059, 0.051);
 
 # Keep the themed logo for the disk-unlock prompt. Normal boot uses the
 # distro icon spinner below instead.

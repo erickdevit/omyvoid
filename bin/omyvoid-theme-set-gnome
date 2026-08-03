@@ -20,7 +20,7 @@ GNOME_ICONS_THEME=~/.config/omyvoid/current/theme/icons.theme
 if [[ -f $GNOME_ICONS_THEME ]]; then
   ICON_THEME="$(<$GNOME_ICONS_THEME)"
 else
-  ICON_THEME="Yaru-blue"
+  ICON_THEME="Papirus-Dark"
 fi
 
 gsettings set org.gnome.desktop.interface color-scheme "$COLOR_SCHEME" >/dev/null 2>&1 || true

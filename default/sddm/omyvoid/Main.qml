@@ -4,7 +4,7 @@ import SddmComponents
 Rectangle {
   id: root
   anchors.fill: parent
-  color: "#140a05"
+  color: "#111c18"
 
   property string currentUser: {
     if (userModel.lastUser !== "")

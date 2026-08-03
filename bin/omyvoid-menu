@@ -92,7 +92,7 @@ show_learn_menu() {
   case $(menu "$I18N_MENU_LEARN" "$I18N_LEARN_KEYBINDINGS\n$I18N_LEARN_TMUX\n$I18N_LEARN_OMYVOID\n$I18N_LEARN_HYPRLAND\n$I18N_LEARN_VOID\n$I18N_LEARN_NEOVIM\n$I18N_LEARN_BASH") in
   *"$I18N_LEARN_TMUX"*) omyvoid-menu-tmux-keybindings ;;
   *"$I18N_LEARN_KEYBINDINGS"*) omyvoid-menu-keybindings ;;
-  *"$I18N_LEARN_OMYVOID"*) omyvoid-launch-webapp "https://learn.omacom.io/2/the-omyvoid-manual" ;;
+  *"$I18N_LEARN_OMYVOID"*) omyvoid-launch-webapp "https://github.com/erickdevit/omyvoid#readme" ;;
   *"$I18N_LEARN_HYPRLAND"*) omyvoid-launch-webapp "https://wiki.hypr.land/" ;;
   *"$I18N_LEARN_VOID"*) omyvoid-launch-webapp "https://docs.voidlinux.org/" ;;
   *"$I18N_LEARN_BASH"*) omyvoid-launch-webapp "https://devhints.io/bash" ;;

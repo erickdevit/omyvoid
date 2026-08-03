@@ -2,7 +2,7 @@ theme_dir="/usr/share/plymouth/themes/omyvoid"
 staging_dir=$(mktemp -d)
 trap 'rm -rf "$staging_dir"' EXIT
 
-accent_hex=f59e0b
+accent_hex=509475
 
 find "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/plymouth" -maxdepth 1 -type f -exec cp -t "$staging_dir/" {} +
 omyvoid-cmd-generate-ascii-logo "$staging_dir/logo.png" "$accent_hex"

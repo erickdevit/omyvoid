@@ -9,7 +9,7 @@ theme_dir="/usr/share/sddm/themes/omyvoid"
 staging_dir=$(mktemp -d)
 trap 'rm -rf "$staging_dir"' EXIT
 
-accent_hex=f59e0b
+accent_hex=509475
 
 cp -a "$OMYVOID_PATH/default/sddm/omyvoid/." "$staging_dir/"
 omyvoid-cmd-generate-ascii-logo "$staging_dir/logo.png" "$accent_hex"

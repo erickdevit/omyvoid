@@ -1,83 +1,42 @@
-# Main background, empty for terminal default, need to be empty if you want transparent background
-theme[main_bg]="#140a05"
-
-# Main text color
-theme[main_fg]="#f5e6d3"
-
-# Title color for boxes
-theme[title]="#f5e6d3"
-
-# Highlight color for keyboard shortcuts
-theme[hi_fg]="#f59e0b"
-
-# Background color of selected item in processes box
-theme[selected_bg]="#2a1a10"
-
-# Foreground color of selected item in processes box
-theme[selected_fg]="#f59e0b"
-
-# Color of inactive/disabled text
-theme[inactive_fg]="#5c4033"
-
-# Color of text appearing on top of graphs, i.e uptime and current network graph scaling
-theme[graph_text]="#f5e6d3"
-
-# Background color of the percentage meters
-theme[meter_bg]="#2a1a10"
-
-# Misc colors for processes box including mini cpu graphs, details memory graph and details status text
-theme[proc_misc]="#f5e6d3"
-
-# CPU, Memory, Network, Proc box outline colors
-theme[cpu_box]="#f59e0b"    # Orange
-theme[mem_box]="#84d187"    # Green
-theme[net_box]="#ef4444"    # Red
-theme[proc_box]="#fb923c"   # Light Orange
-
-# Box divider line and small boxes line color
-theme[div_line]="#5c4033"
-
-# Temperature graph color (Green -> Yellow -> Red)
-theme[temp_start]="#84d187"
-theme[temp_mid]="#fbbf24"
-theme[temp_end]="#ef4444"
-
-# CPU graph colors (Orange -> Amber)
-theme[cpu_start]="#fb923c"
-theme[cpu_mid]="#f59e0b"
-theme[cpu_end]="#fbbf24"
-
-# Mem/Disk free meter (Orange -> Amber -> Yellow)
-theme[free_start]="#f59e0b"
-theme[free_mid]="#fbbf24"
-theme[free_end]="#f59e0b"
-
-# Mem/Disk cached meter (Cream -> Orange)
-theme[cached_start]="#f5e6d3"
-theme[cached_mid]="#f59e0b"
-theme[cached_end]="#fb923c"
-
-# Mem/Disk available meter (Red -> Orange)
-theme[available_start]="#ef4444"
-theme[available_mid]="#ea580c"
-theme[available_end]="#f59e0b"
-
-# Mem/Disk used meter (Green -> Orange)
-theme[used_start]="#84d187"
-theme[used_mid]="#f59e0b"
-theme[used_end]="#fb923c"
-
-# Download graph colors (Red -> Orange)
-theme[download_start]="#ef4444"
-theme[download_mid]="#ea580c"
-theme[download_end]="#f59e0b"
-
-# Upload graph colors (Green -> Orange)
-theme[upload_start]="#84d187"
-theme[upload_mid]="#f59e0b"
-theme[upload_end]="#fb923c"
-
-# Process box color gradient for threads, mem and cpu usage (Amber -> Orange)
-theme[process_start]="#fbbf24"
-theme[process_mid]="#f59e0b"
-theme[process_end]="#fb923c"
+theme[main_bg]="#111c18"
+theme[main_fg]="#F7E8B2"
+theme[title]="#D6D5BC"
+theme[hi_fg]="#509475"
+theme[selected_bg]="#364538"
+theme[selected_fg]="#F7E8B2"
+theme[inactive_fg]="#53685B"
+theme[graph_text]="#C1C497"
+theme[meter_bg]="#23372B"
+theme[proc_misc]="#C1C497"
+theme[cpu_box]="#81B8A8"
+theme[mem_box]="#81B8A8"
+theme[net_box]="#81B8A8"
+theme[proc_box]="#81B8A8"
+theme[div_line]="#53685B"
+theme[temp_start]="#BFD99A"
+theme[temp_mid]="#E1B55E"
+theme[temp_end]="#FF5345"
+theme[cpu_start]="#5F8C86"
+theme[cpu_mid]="#629C89"
+theme[cpu_end]="#76AD98"
+theme[free_start]="#5F8C86"
+theme[free_mid]="#629C89"
+theme[free_end]="#76AD98"
+theme[cached_start]="#5F8C86"
+theme[cached_mid]="#629C89"
+theme[cached_end]="#76AD98"
+theme[available_start]="#5F8C86"
+theme[available_mid]="#629C89"
+theme[available_end]="#76AD98"
+theme[used_start]="#5F8C86"
+theme[used_mid]="#629C89"
+theme[used_end]="#76AD98"
+theme[download_start]="#75BBB3"
+theme[download_mid]="#61949A"
+theme[download_end]="#215866"
+theme[upload_start]="#215866"
+theme[upload_mid]="#91C080"
+theme[upload_end]="#549E6A"
+theme[process_start]="#72CFA3"
+theme[process_mid]="#D0D494"
+theme[process_end]="#DB9F9C"

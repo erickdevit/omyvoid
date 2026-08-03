@@ -3,7 +3,7 @@
 # omyvoid:summary=Display the Omyvoid logo in the terminal using green color.
 
 clear
-echo -e "\033[32m"
+echo -e "\033[38;2;80;148;117m"
 cat <~/.local/share/omyvoid/logo.txt
 echo -e "\033[0m"
 echo

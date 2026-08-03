@@ -74,7 +74,7 @@ sddm_dir="/usr/share/sddm/themes/omyvoid"
 sddm_template="$OMYVOID_PATH/default/sddm/omyvoid/Main.qml"
 
 sed \
-  -e "s/#140a05/#$bg_hex/g" \
+  -e "s/#111c18/#$bg_hex/g" \
   -e "s/#f5e6d3/#$text_hex/g" \
   "$sddm_template" | sudo tee "$sddm_dir/Main.qml" >/dev/null
 

@@ -1,6 +1,11 @@
 # Omyvoid
 
+![Símbolo do Omyvoid](logo.svg)
+
 Omyvoid porta a experiência do Omybuntu/Omarchy para o Void Linux `x86_64-glibc`. O projeto usa apenas XBPS, runit, Btrfs, dracut e Limine como base de instalação, serviços, armazenamento e boot.
+
+A identidade visual usa exclusivamente o símbolo reduzido do Void e o wordmark
+`OMYVOID`; regras e ativos canônicos estão documentados em [BRANDING.md](BRANDING.md).
 
 > Estado: `0.1.0-dev.1`. O código está em desenvolvimento; ainda não há uma release estável ou ISO indicada para máquinas de produção.
 

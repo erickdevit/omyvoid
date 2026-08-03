@@ -4,18 +4,18 @@
 
 source "${OMYVOID_PATH:-$HOME/.local/share/omyvoid}/default/i18n/init.sh"
 
-OPT_OMARCHY="󱊷  Compose Key (Omarchy/Omyvoid)"
+OPT_OMYVOID="󱊷  Compose Key (Omyvoid)"
 OPT_NORMAL="󰌌  Caps Lock (Normal)"
-list="$OPT_OMARCHY\n$OPT_NORMAL"
+list="$OPT_OMYVOID\n$OPT_NORMAL"
 
 current_label="$OPT_NORMAL"
 # Check if kb_options has compose:caps and is not empty
 if grep -qE "^[[:space:]]*kb_options[[:space:]]*=.*compose:caps" ~/.config/hypr/input.conf 2>/dev/null; then
-    current_label="$OPT_OMARCHY"
+    current_label="$OPT_OMYVOID"
 fi
 
 index=2
-if [[ "$current_label" == "$OPT_OMARCHY" ]]; then
+if [[ "$current_label" == "$OPT_OMYVOID" ]]; then
     index=1
 fi
 
@@ -25,7 +25,7 @@ if [[ -z $selected || $selected == "CNCLD" ]]; then
     exit 0
 fi
 
-if [[ "$selected" == "$OPT_OMARCHY" ]]; then
+if [[ "$selected" == "$OPT_OMYVOID" ]]; then
     if grep -qE "^[[:space:]]*kb_options[[:space:]]*=" ~/.config/hypr/input.conf; then
         sed -i 's/^[[:space:]]*kb_options[[:space:]]*=.*/  kb_options = compose:caps # ,grp:alts_toggle/' ~/.config/hypr/input.conf
     else

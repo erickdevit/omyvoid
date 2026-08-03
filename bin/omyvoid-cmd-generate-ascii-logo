@@ -12,7 +12,7 @@ fi
 
 OMYVOID_PATH="${OMYVOID_PATH:-$HOME/.local/share/omyvoid}"
 output_path="$1"
-text_hex="${2:-f59e0b}"
+text_hex="${2:-509475}"
 text_hex="${text_hex#\#}"
 
 logo_txt="$OMYVOID_PATH/logo.txt"

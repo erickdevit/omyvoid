@@ -3,7 +3,7 @@ config-file = ?"~/.config/omyvoid/current/theme/ghostty.conf"
 
 # Font
 font-family = "JetBrainsMono Nerd Font"
-font-family = "icomoon"
+font-family = "Omyvoid Icons"
 font-style = Regular
 font-size = 9
 

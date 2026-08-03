@@ -6,6 +6,6 @@ ModuleName=script
 [script]
 ImageDir=/usr/share/plymouth/themes/omyvoid
 ScriptFile=/usr/share/plymouth/themes/omyvoid/omyvoid.script
-ConsoleLogBackgroundColor=0x140a05
+ConsoleLogBackgroundColor=0x111c18
 MonospaceFont=Cantarell 11
 Font=Cantarell 11
