@@ -17,7 +17,7 @@ from fontTools.svgLib.path import parse_path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_SVG = ROOT / "Void_Linux_logo.svg"
+CANONICAL_SVG = ROOT / "logo.svg" if (ROOT / "logo.svg").exists() else ROOT / "Void_Linux_logo.svg"
 SOURCE_DIR = ROOT / "tools" / "branding" / "sources"
 OSAKA = {
     "background": "#111c18",
@@ -186,11 +186,11 @@ def branded_background(background: str, accent: str) -> Image.Image:
     return image
 
 
-def branded_background_text(background: str, foreground: str, accent: str) -> Image.Image:
+def branded_background_text(background: str, foreground: str) -> Image.Image:
     image = Image.new("RGBA", (3840, 2160), rgba(background))
-    composite_mark(image, size=300, position=((image.width - 300) // 2, 700), color=accent, glow=0)
-    wordmark = render_wordmark(1100, 258, foreground)
-    image.alpha_composite(wordmark, ((image.width - 1100) // 2, 1080))
+    wordmark = render_wordmark(2200, 520, foreground)
+    position = ((image.width - wordmark.width) // 2, (image.height - wordmark.height) // 2)
+    image.alpha_composite(wordmark, position)
     return image
 
 
@@ -214,9 +214,7 @@ def generate_theme_assets() -> None:
                 ImageOps.fit(background, (1800, 1012), method=Image.Resampling.LANCZOS),
                 theme_dir / "preview.png",
             )
-            background_text = branded_background_text(
-                palette["background"], palette["foreground"], palette["accent"]
-            )
+            background_text = branded_background_text(palette["background"], palette["foreground"])
             save_png(background_text, theme_dir / "backgrounds" / "omyvoid-text.png")
         save_png(render_wordmark(800, 188, palette["foreground"]), theme_dir / "unlock.png")
         save_png(
@@ -244,8 +242,9 @@ def generate_primary_wallpapers() -> None:
     )
 
     minimal_text = source_wallpaper("minimal-osaka-jade.png")
-    composite_mark(minimal_text, size=320, position=(1760, 680), color=OSAKA["accent"], alpha=230, glow=0)
-    minimal_text.alpha_composite(render_wordmark(1100, 258, OSAKA["foreground"]), (1370, 1080))
+    wordmark = render_wordmark(2200, 520, OSAKA["foreground"])
+    position = ((minimal_text.width - wordmark.width) // 2, (minimal_text.height - wordmark.height) // 2)
+    minimal_text.alpha_composite(wordmark, position)
     save_png(minimal_text, ROOT / "themes" / "omyvoid" / "backgrounds" / "omyvoidBackground.png")
 
     rescue = source_wallpaper("rescue-osaka-jade.png")
