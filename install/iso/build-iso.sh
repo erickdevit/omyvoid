@@ -108,13 +108,13 @@ mkdir -p "$image_dir"
 xorriso -osirrox on -indev "$stage_iso" -extract / "$image_dir"
 rm -rf "$image_dir/boot/grub" "$image_dir/boot/isolinux" "$image_dir/EFI"
 
-shopt -s nullglob
-cached_packages=("$build_dir/xbps-cache/"*.xbps)
-(( ${#cached_packages[@]} > 0 )) || {
-  echo "void-mklive did not populate the offline XBPS cache" >&2
-  exit 1
-}
-cp "${cached_packages[@]}" "$repository_dir/"
+if [[ ${OMYVOID_OFFLINE_REPO:-false} == "true" ]]; then
+  shopt -s nullglob
+  cached_packages=("$build_dir/xbps-cache/"*.xbps)
+  if (( ${#cached_packages[@]} > 0 )); then
+    cp "${cached_packages[@]}" "$repository_dir/"
+  fi
+fi
 find "$repository_dir" -maxdepth 1 -type f ! -name '*.xbps' -delete
 repository_packages=("$repository_dir/"*.xbps)
 xbps-rindex -a "${repository_packages[@]}"
