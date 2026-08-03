@@ -31,7 +31,7 @@ if [[ ! -f /etc/os-release ]] || ! grep -Eq '^ID="?void"?$' /etc/os-release; the
   exit 1
 fi
 
-sudo xbps-install -Sy git curl sudo bash
+sudo xbps-install -Sy git curl sudo bash >/dev/null 2>&1
 
 # Use custom repo if specified, otherwise default to erickdevit/omyvoid
 OMYVOID_REPO="${OMYVOID_REPO:-erickdevit/omyvoid}"

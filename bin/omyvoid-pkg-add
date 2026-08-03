@@ -23,8 +23,14 @@ fi
 
 # 2. Try to install all missing packages in a single XBPS transaction
 echo "Installing packages in batch: ${missing_pkgs[*]}..."
-if sudo xbps-install -Sy "${missing_pkgs[@]}"; then
-  exit 0
+if [[ -n ${OMYVOID_INSTALL_LOG_FILE:-} && -f $OMYVOID_INSTALL_LOG_FILE ]]; then
+  if sudo xbps-install -Sy "${missing_pkgs[@]}" >> "$OMYVOID_INSTALL_LOG_FILE" 2>&1; then
+    exit 0
+  fi
+else
+  if sudo xbps-install -Sy "${missing_pkgs[@]}"; then
+    exit 0
+  fi
 fi
 
 # 3. Fallback: if batch install fails, install one-by-one
@@ -33,13 +39,24 @@ failed_pkgs=()
 for pkg in "${missing_pkgs[@]}"; do
   if omyvoid-pkg-missing "$pkg"; then
     echo "Installing $pkg..."
-    if sudo xbps-install -Sy "$pkg"; then
-      continue
+    if [[ -n ${OMYVOID_INSTALL_LOG_FILE:-} && -f $OMYVOID_INSTALL_LOG_FILE ]]; then
+      if sudo xbps-install -Sy "$pkg" >> "$OMYVOID_INSTALL_LOG_FILE" 2>&1; then
+        continue
+      else
+        ret=$?
+        if (( ret == 130 )); then exit 130; fi
+        echo -e "\033[33mWarning: Package '$pkg' is unavailable in the configured XBPS repositories.\033[0m" >&2
+        failed_pkgs+=("$pkg")
+      fi
     else
-      ret=$?
-      if (( ret == 130 )); then exit 130; fi
-      echo -e "\033[33mWarning: Package '$pkg' is unavailable in the configured XBPS repositories.\033[0m" >&2
-      failed_pkgs+=("$pkg")
+      if sudo xbps-install -Sy "$pkg"; then
+        continue
+      else
+        ret=$?
+        if (( ret == 130 )); then exit 130; fi
+        echo -e "\033[33mWarning: Package '$pkg' is unavailable in the configured XBPS repositories.\033[0m" >&2
+        failed_pkgs+=("$pkg")
+      fi
     fi
   fi
 done

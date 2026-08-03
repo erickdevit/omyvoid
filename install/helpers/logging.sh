@@ -21,8 +21,8 @@ start_log_output() {
     local max_line_width=$((LOGO_WIDTH - 4))
 
     while true; do
-      # Read the last N lines into an array
-      mapfile -t current_lines < <(tail -n $log_lines "$OMYVOID_INSTALL_LOG_FILE" 2>/dev/null)
+      # Read the last N lines into an array (stripping carriage returns)
+      mapfile -t current_lines < <(tail -n $log_lines "$OMYVOID_INSTALL_LOG_FILE" 2>/dev/null | tr -d '\r')
 
       # Build complete output buffer with escape sequences
       output=""
