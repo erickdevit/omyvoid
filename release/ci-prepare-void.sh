@@ -41,7 +41,7 @@ case "$profile" in
     ;;
 esac
 
-[[ -f /etc/os-release ]] && grep -q '^ID=void$' /etc/os-release || {
+[[ -f /etc/os-release ]] && grep -Eq '^ID="?void"?$' /etc/os-release || {
   echo "The CI runner must use Void Linux" >&2
   exit 1
 }
